@@ -215,7 +215,7 @@ class Sequence(object):
 
     #######################################################################################
 
-    def subseq(self, start, stop, slicesyntax=True, rename=False):
+    def subseq(self, start, stop, slicesyntax=True, rename=False, overhangs=False, padding="X"):
         """Returns subsequence as sequence object of proper type. Indexing can start at zero or one"""
 
         # Rename if requested. Note: naming should be according to original indices (before alteration)
@@ -229,8 +229,10 @@ class Sequence(object):
             start -= 1
 
         # Sanity check: are requested subsequence indices within range of seq?
-        if start < 0 or stop > len(self):
-            raise SeqError("Requested subsequence (%d to %d) exceeds sequence length (%d)" % (start, stop, len(self)))
+        if not overhangs and (start < 0 or stop > len(self)):
+            msg = "Requested subsequence ({} to {}) exceeds sequence length ({})".format(start, stop, len(self))
+            msg += "\nThis is only allowed if option overhangs=True"
+            raise SeqError(msg)
 
         seq = self.seq[start:stop]
         comments = self.comments
@@ -257,22 +259,36 @@ class Sequence(object):
 
     #######################################################################################
 
-    def windows(self, wsize, stepsize=1, rename=False):
+    def windows(self, wsize, stepsize=1, l_overhang=0, r_overhang=0, padding="X", rename=False):
         """Returns window iterator object"""
 
         # Function that returns window iterator object, which can be used to iterate over windows on sequence
         # Iteration returns objects of the proper sequence type (same as parent). The rename option is like for subseq()
         # Main trick here is a class which keeps track of its enclosing Sequence object ("parent"),
         # while at the same time keeping track of which window the iteration has gotten to
+        # stepsize: consecutive windows are stepsize residues apart
+        # l_overhang, r_overhang: Iteration includes windows that "fall off the edge" of the sequence
+        # l_overhang specifies the location of the leftmost window (how many window positions on the left are outside the seq)
+        # r_overhang does the same for rightmost window (how many window positions are on the right of seq for rightmost window)
+        # padding: use this character to pad the overhangs (all non-sequence positions are set to this)
 
         class Window_iterator:
             """Window iterator object"""
 
-            def __init__(self, parent, wsize, stepsize, rename):
-                self.i = 0
+            def __init__(self, parent, wsize, stepsize, l_overhang, r_overhang, padding, rename):
+                if l_overhang > wsize or r_overhang > wsize:
+                    raise SeqError("l_overhang and r_overhang must be smaller than wsize")
+                if wsize > len(parent):
+                    raise SeqError("wsize must be smaller than length of sequence")
+
+                self.i = 0 - l_overhang
                 self.wsize = wsize
                 self.stepsize = stepsize
+                self.l_overhang = l_overhang
+                self.r_overhang = r_overhang
+                self.padding = padding
                 self.length = len(parent)
+                self.right_end = self.length + r_overhang
                 self.parent = parent
                 self.rename = rename
 
@@ -280,15 +296,26 @@ class Sequence(object):
                 return self
 
             def __next__(self):
-                if self.i + self.wsize <= self.length:
+                if self.i + self.wsize <= self.right_end:
                     start = self.i
                     stop = start + self.wsize
                     self.i += self.stepsize
-                    return self.parent.subseq(start, stop, rename=self.rename)
+                    if start < 0:
+                        window = self.parent.subseq(0, stop, rename=self.rename)
+                        window.seq = abs(start) * self.padding + window.seq  # Add the required number of padding chars
+                    elif start >= 0 and stop <= self.length:
+                        window = self.parent.subseq(start, stop, rename=self.rename)
+                    elif start > 0 and stop > self.length:
+                        window = self.parent.subseq(start, self.length, rename=self.rename)
+                        window.seq = window.seq + (stop - self.length) * self.padding # Add the required number of padding chars
+                    else:
+                        raise SeqError("Execution really should never get to this line")
+                    return window
                 else:
                     raise StopIteration
 
-        return Window_iterator(self, wsize, stepsize, rename)    # "self" points to enclosing Sequence object ("parent")
+        # In call below "self" points to enclosing Sequence object ("parent")
+        return Window_iterator(self, wsize, stepsize, l_overhang, r_overhang, padding, rename)
 
     #######################################################################################
 
