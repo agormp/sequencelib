@@ -236,7 +236,8 @@ class Sequence(object):
         comments = self.comments
         annotation = self.annotation[start:stop]
 
-        subseq = self.__class__(name, seq, comments, annotation)       # Create new object of same class as self (don't know which sequence type we're in)
+        subseq = self.__class__(name, seq, comments, annotation)    # Create new object of same class as self
+                                                                    # (don't know which sequence type we're in)
         return(subseq)
 
     #######################################################################################
