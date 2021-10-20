@@ -215,7 +215,7 @@ class Sequence(object):
 
     #######################################################################################
 
-    def subseq(self, start, stop, slicesyntax=True, rename=False, overhangs=False, padding="X"):
+    def subseq(self, start, stop, slicesyntax=True, rename=False):
         """Returns subsequence as sequence object of proper type. Indexing can start at zero or one"""
 
         # Rename if requested. Note: naming should be according to original indices (before alteration)
@@ -229,16 +229,15 @@ class Sequence(object):
             start -= 1
 
         # Sanity check: are requested subsequence indices within range of seq?
-        if not overhangs and (start < 0 or stop > len(self)):
-            msg = "Requested subsequence ({} to {}) exceeds sequence length ({})".format(start, stop, len(self))
-            msg += "\nThis is only allowed if option overhangs=True"
-            raise SeqError(msg)
+        if start < 0 or stop > len(self):
+            raise SeqError("Requested subsequence (%d to %d) exceeds sequence length (%d)" % (start, stop, len(self)))
 
         seq = self.seq[start:stop]
         comments = self.comments
         annotation = self.annotation[start:stop]
 
-        subseq = self.__class__(name, seq, comments, annotation)       # Create new object of same class as self (don't know which sequence type we're in)
+        subseq = self.__class__(name, seq, comments, annotation)    # Create new object of same class as self
+                                                                    # (don't know which sequence type we're in)
         return(subseq)
 
     #######################################################################################
