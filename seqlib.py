@@ -25,7 +25,7 @@ import difflib
 #############################################################################################
 #############################################################################################
 #
-# Various functions used by methods, that do not fit neatly in any class 
+# Various functions used by methods, that do not fit neatly in any class
 # (These were previously in "utils.py", but were included here to avoid having to distribute extra library)
 
 def escape_metachars(text, metachars=".^$*+?{}[]\|()"):
@@ -57,7 +57,7 @@ def remove_comments(text, leftdelim, rightdelim=None):
     # Preprocess delims for use in re etc
     leftdelim = escape_metachars(leftdelim)
     rightdelim = escape_metachars(rightdelim)
-        
+
     # Construct sorted list of tuples of the form [(0, 'start'), (5, 'stop'), (7, 'start'), ...]
     delimlist = [(delim.start(), "start") for delim in re.finditer(leftdelim, text)]
     # If text contains no starts (=> no comments): return un-altered text
@@ -66,7 +66,7 @@ def remove_comments(text, leftdelim, rightdelim=None):
     else:
         delimlist.extend([(delim.start(), "stop") for delim in re.finditer(rightdelim, text)])
         delimlist.sort()
-    
+
     # Resolve issues with overlapping delimiters:
     tmplist = [delimlist[0]]
     for i in range(1, len(delimlist)):
@@ -76,7 +76,7 @@ def remove_comments(text, leftdelim, rightdelim=None):
             tmplist.append(delimlist[i])
     delimlist = tmplist
 
-    # Traverse text; along the way copy text not inside comment-delimiter pairs. 
+    # Traverse text; along the way copy text not inside comment-delimiter pairs.
     # Use stack ("unmatched_starts") to keep track of nesting
     offset = len(rightdelim) - 1
     unmatched_starts = 0
@@ -90,10 +90,10 @@ def remove_comments(text, leftdelim, rightdelim=None):
         elif delim == "stop":
             unmatched_starts -= 1
             if unmatched_starts == 0:                               # End of comment region
-                prevpos = start + offset 
+                prevpos = start + offset
             elif unmatched_starts == -1:                            # Error: more right delims than left delims
                 raise Exception("Unmatched end-comment delimiter: {}".format(text[pos-5:pos+5]))
-    
+
     # Add final block of text if relevant (i.e., if text does not stop with rightdelim), return processed text
     if prevpos < len(text):
         processed_text += text[prevpos:]
@@ -163,7 +163,7 @@ class Sequence(object):
             return True
         else:
             return False
-        
+
     #######################################################################################
 
     def __ne__(self, other):
@@ -210,7 +210,7 @@ class Sequence(object):
 
     def rename(self, newname):
         """Changes name of sequence"""
-        
+
         self.name = newname
 
     #######################################################################################
@@ -223,7 +223,7 @@ class Sequence(object):
             name = self.name + "_%d_%d" % (start, stop)
         else:
             name = self.name
-            
+
         # If slicesyntax is False: indexing starts at 1, and stop is included (and hence left unchanged)
         if not slicesyntax:
             start -= 1
@@ -231,11 +231,11 @@ class Sequence(object):
         # Sanity check: are requested subsequence indices within range of seq?
         if start < 0 or stop > len(self):
             raise SeqError("Requested subsequence (%d to %d) exceeds sequence length (%d)" % (start, stop, len(self)))
-        
+
         seq = self.seq[start:stop]
         comments = self.comments
         annotation = self.annotation[start:stop]
-        
+
         subseq = self.__class__(name, seq, comments, annotation)       # Create new object of same class as self (don't know which sequence type we're in)
         return(subseq)
 
@@ -264,7 +264,7 @@ class Sequence(object):
         # Iteration returns objects of the proper sequence type (same as parent). The rename option is like for subseq()
         # Main trick here is a class which keeps track of its enclosing Sequence object ("parent"),
         # while at the same time keeping track of which window the iteration has gotten to
-        
+
         class Window_iterator:
             """Window iterator object"""
 
@@ -319,7 +319,7 @@ class Sequence(object):
             s = self.annotation
             annotlist = [s[i] for i in keeplist]
             self.annotation = "".join(annotlist)
-            
+
 
     #######################################################################################
 
@@ -330,7 +330,7 @@ class Sequence(object):
         for (c1, c2) in zip(self.seq, other.seq):
             if (c1 != c2):
                 diffs += 1
-                
+
         return diffs
 
     #######################################################################################
@@ -345,7 +345,7 @@ class Sequence(object):
         for (c1, c2) in zip(self.seq, other.seq):
             if (c1 != c2) and (c1 != "-") and (c2 != "-"):
                 diffs += 1
-                
+
         return diffs
 
     #######################################################################################
@@ -398,7 +398,7 @@ class Sequence(object):
             fasta = [">%s %s\n" % (self.name, self.comments)]
         else:
             fasta = [">%s\n" % (self.name)]
-            
+
         # Print seq, fold line at "width" characters
         numlines = int(ceil(len(self)/float(width)))
         for i in range(numlines):
@@ -411,19 +411,19 @@ class Sequence(object):
 
     def how(self, width=80, nocomments=False):
         """Return how-formatted sequence as a string"""
-        
+
         # NOTE: HOW requires a fixed width of 80. Should perhaps remove width-option from function
 
         if self.comments and not nocomments:
             how = ["{length:>6} {name} {com}\n".format(length=len(self.seq), name=self.name, com=self.comments)]
         else:
             how = ["{length:>6} {name}\n".format(length=len(self.seq), name=self.name)]
-            
+
         # If sequence has no annotation: construct default annotation field consisting of all dots (same len as seq)
         # Note: I should perhaps check that annotation has same length as seq when present?
         if not self.annotation:
             self.annotation = "." * len(self)
-            
+
         # Print seq and annotation, fold lines at "width" characters
         numlines = int(ceil(len(self)/float(width)))
         for i in range(numlines):
@@ -432,7 +432,7 @@ class Sequence(object):
         for i in range(numlines):
             how.append(self.annotation[i*width:i*width+width])
             how.append("\n")
-            
+
         del how[-1]  # Remove trailing newline
         return "".join(how)
 
@@ -472,7 +472,7 @@ class Sequence(object):
 
 class DNA_sequence(Sequence):
     """Class containing one DNA sequence, and corresponding methods"""
-    
+
     # Implementation note: alphabet should really be set in a more principled manner - not just to minimum ambiguity set
 
     def __init__(self, name, seq, annotation="", comments="", check_alphabet=False, degap=False):
@@ -543,6 +543,16 @@ class DNA_sequence(Sequence):
         protseq = "".join(protseqlist)
         return Protein_sequence(self.name, protseq)
 
+    #######################################################################################
+
+    def sparse_encode(self):
+        """Converts sequence to a list of integers, useful for rapid alignment"""
+
+        trans_dict = {'A':0, 'C':1, 'G':2, 'T':3}
+        intlist = [(trans_dict[letter]) for letter in self.seq]
+        return intlist
+
+
 #############################################################################################
 #############################################################################################
 
@@ -590,15 +600,15 @@ class ASCII_sequence(Sequence):
 class Contig(object):
     """Class corresponding to contig, i.e. assembly of several reads (sequences).
     Has methods for checking Contig overlap, assembly, etc."""
-    
+
     count = 0   # Used to keep track of number of instances of class, for individual naming of contigs
-        
-    #######################################################################################        
-        
+
+    #######################################################################################
+
     def __init__(self, sequence):
         """Initialises Contig object with one Sequence object"""
-        
-        self.__class__.count += 1        
+
+        self.__class__.count += 1
         self.name = "contig_{:04d}".format(self.__class__.count)
         contigseq = sequence.seq
         self.assembly = sequence.__class__(self.name, contigseq)   # Sequence object containing assembled sequence of entire Contig
@@ -607,13 +617,13 @@ class Contig(object):
         self.readdict[readname] = sequence
         self.readdict[readname].startpos = 0       # I am adding "startpos" and "stoppos" attributes to the Sequence object in readdict
         self.readdict[readname].stoppos = len(sequence.seq)
-        
+
     #######################################################################################
 
     def findoverlap(self, other, minoverlap=0):
         """Checks if two Contig objects overlap (one contained in other, or 3' of one = 5' of other).
         Minoverlap: overlap has to be at least this large to call a match"""
-                
+
         alen, blen = len(self.assembly.seq), len(other.assembly.seq)
         minlen = min(alen, blen)
 
@@ -647,7 +657,7 @@ class Contig(object):
                 break
             else:
                 k -= 1
-                
+
         # Now check if there is a better match where 5' end of self overlaps with 3' end of other
         k = minlen
         while k >= max(minoverlap, bestlen + 1):
@@ -660,62 +670,62 @@ class Contig(object):
                 break
             else:
                 k -= 1
-        
+
         return bestmatch
 
     #######################################################################################
 
     def merge(self, other, overlap):
-        """Merges Contig object with other Contig given overlap info from findoverlap. 
+        """Merges Contig object with other Contig given overlap info from findoverlap.
            Keeps track of positions of all reads from both Contigs"""
-        
-        # "overlap" is result tuple from .findoverlap method        
+
+        # "overlap" is result tuple from .findoverlap method
         # b == 0: a is more upstream, so assembly starts with a (vice versa for a == 0)
         # bstop < bhi: b has extra part downstream of overlap that should be appended to assembly
         # Update read positions with respect to assembly when merging
         astart, astop, bstart, bstop, overlaplen = overlap
         alen = len(self.assembly)
         blen = len(other.assembly)
-        
+
         # First part of assembly is sequence a (self)
         if bstart == 0:
-            # Sequence b (other) has extra part downstream that needs to be appended to assembly                                         
-            if bstop < blen:                                     
+            # Sequence b (other) has extra part downstream that needs to be appended to assembly
+            if bstop < blen:
                 downstreamseq = other.assembly.subseq(bstop, blen)
                 self.assembly.appendseq(downstreamseq)
-                
-            # Add reads from b to readlist in a, and update read coordinates: 
+
+            # Add reads from b to readlist in a, and update read coordinates:
             # b added to end, so all reads in a are OK, but all reads in b were shifted by astart
             for readname in other.readdict:
                 self.readdict[readname] = other.readdict[readname]
                 self.readdict[readname].startpos += astart
                 self.readdict[readname].stoppos += astart
-            
+
         # First part of assembly is sequence b (other)
         # Sequence b must have extra part upstream that needs to be prepended to assembly (since bstart != 0)
         elif astart == 0:
-            upstreamseq = other.assembly.subseq(0, bstart)                                        
+            upstreamseq = other.assembly.subseq(0, bstart)
             self.assembly.prependseq(upstreamseq)
-            
+
             # Correct coordinates for reads in readlist of a: these have been shifted by bstart
             for readname in self.readdict:
                 self.readdict[readname].startpos += bstart
                 self.readdict[readname].stoppos += bstart
-            
+
             # Add reads from b to readlist in a. These have correct coordinates since b added at front
             self.readdict.update( other.readdict )
- 
+
     #######################################################################################
 
     def regions(self, slicesyntax=True, join_samename=False):
-        """Divides contig into regions based on read overlaps: 
-                region boundaries are created in all locations where a read starts or stops. 
+        """Divides contig into regions based on read overlaps:
+                region boundaries are created in all locations where a read starts or stops.
         Returns list of regions sorted by start pos. Information for a single region is stored in a special class and includes:
             start, stop pos of region (in contig coordinates)
             list of reads in region
                 for each read: name, and start + stop pos (in read-coordinates)
         """
-                
+
         #######################################################################################
 
         class Region(object):
@@ -734,26 +744,26 @@ class Contig(object):
                     self.name_list.append(posname)
                     self.readinfo_list.append( (origname, read_start, read_stop) )
                 self.name_list.sort()
-                
+
             def __repr__(self):
                 return "Start: {}\tStop:  {}\tReads:  {}".format(self.contig_start, self.contig_stop, self.readinfo_list)
-                
+
             def get_align_tuple(self):
                 return(self.readinfo_list[0])            # original read subsection chosen to represent this region (for seqconverter)
-                
+
         #######################################################################################
 
         # First, get an overview over where the boundaries between charsets should be (=where reads start or stop)
         read_boundary_dict = {}
         read_boundary_set = set()
-        
+
         for read in self.readdict.values():
             read_boundary_set.add(read.startpos)        # set automatically uniquefies values
             read_boundary_set.add(read.stoppos)
-        
+
         read_boundary_list = list(read_boundary_set)
         read_boundary_list.sort()
-        
+
         # For each boundary position keep track of which reads that are in the following region
         # => reads where the current boundary position is >= read.startpos AND < read.stoppos
         # Collect info in read_boundary_dict (key=boundary position, value = list of read names)
@@ -771,7 +781,7 @@ class Contig(object):
             readlist = read_boundary_dict[start]
             reg = Region(start, stop, readlist, self.readdict)
             region_list.append(reg)
-            
+
         return region_list
 
 #############################################################################################
@@ -779,42 +789,42 @@ class Contig(object):
 
 class Read_assembler(object):
     """Class for assembling reads into contigs"""
-    
-    #######################################################################################            
-    
+
+    #######################################################################################
+
     def __init__(self, seqset=None):
-        """Initialises set of reads from Seq_set (or other iterable containing Sequence objects). 
+        """Initialises set of reads from Seq_set (or other iterable containing Sequence objects).
         If Seq_set is not provided then individual seqs can be added later"""
-        
+
         self.contigdict = {}
         self.contiglist = None
-        
+
         if seqset:
             for seq in seqset:
                 c = Contig(seq)
                 self.contigdict[c.name] = c
 
-    #######################################################################################            
-    
+    #######################################################################################
+
     def addseq(self, seq):
         """For adding one sequence at a time to Read_assembler"""
-        
+
         c = Contig(seq)
         self.contigdict[c.name] = c
-        
-    #######################################################################################            
-    
+
+    #######################################################################################
+
     def assemble(self, minoverlap=-1):
         """Assembles reads into as few contigs as possible, and returns list of Contig objects.
         minoverlap: minimum length of overlap required to merge reads.
         Special value minoverlap = -1: set value automatically based on size of data set"""
-        
+
         # If reads were already assembled, return again (hmm - possibly wrong way to think of this...)
         if self.contiglist:
             return self.contiglist
         else:
             self.contiglist = []
-        
+
         # Set minoverlap automatically if requested such that expectation of no. overlap in set is < 1
         if minoverlap == -1:
             l = 0
@@ -822,7 +832,7 @@ class Read_assembler(object):
                 l += len( contig.assembly )
             minoverlap = ceil( log( l ) / log( 4 ) )    # Previous self should remind current self why this is clever...
         while len ( self.contigdict ) > 0:
-            
+
             c1name, c1 = self.contigdict.popitem()
             contigfinished = False
 
@@ -842,14 +852,14 @@ class Read_assembler(object):
                     contigfinished = True
 
             self.contiglist.append(c1)
-            
+
         # Sort list of contigs based on contig name (i.e., based on order in which they were created since contig names are numbered)
         # Using decorate-sort-undecorate
         decorated = [(c.name, c) for c in self.contiglist]
         decorated.sort()
         self.contiglist = [d[1] for d in decorated]
         return self.contiglist
-            
+
 #############################################################################################
 #############################################################################################
 
@@ -878,14 +888,14 @@ class Sequences_base(object):
     #######################################################################################
 
     def __getitem__(self, index):
-        """Implements indexing, slicing, and iteration for sequences in seqlist. 
+        """Implements indexing, slicing, and iteration for sequences in seqlist.
         Integer index returns Sequence object
-        Slice returns subset (Seq_set or Seq_alignment object depending on what subclass we are in). 
+        Slice returns subset (Seq_set or Seq_alignment object depending on what subclass we are in).
         Tuple ([row, column] indexing) returns subsequence of selected sequence(s)"""
-        
+
         if isinstance(index, int):
             return self.seqdict[self.seqnamelist[index]]
-        elif isinstance(index, slice):            
+        elif isinstance(index, slice):
             return self.subset(self.seqnamelist[index])
         elif isinstance(index, tuple):
             i, j = index
@@ -900,7 +910,7 @@ class Sequences_base(object):
             raise SeqError("A set of sequences must be indexed using either integer, slice, or tuple ([row, column])")
 
     #######################################################################################
- 
+
     def __eq__(self, other):
         """Implements equality check between sequence collections"""
 
@@ -979,14 +989,14 @@ class Sequences_base(object):
                 self.seqtype = seq.seqtype
                 self.alphabet = seq.alphabet
                 self.ambigsymbols = seq.ambigsymbols
-                
+
             elif seq.seqtype != self.seqtype:
                 raise SeqError("Mismatch between sequence types: %s vs. %s" % (self.seqtype, seq.seqtype))
 
             # Add seq to Seq_set.
             self.seqnamelist.append(seq.name)
             self.seqdict[seq.name] = seq
-            
+
     #######################################################################################
 
     def addseqset(self, other, silently_discard_dup_name=False):
@@ -1015,10 +1025,10 @@ class Sequences_base(object):
             self.remseq(name)
 
     # #######################################################################################
-    # 
+    #
     # def changeseqname(self, oldname, newname, fix_dupnames=False):
     #     """Change the name of one sequence object from oldname to newname"""
-    # 
+    #
     #     if newname in self.seqdict:
     #         if fix_dupnames:
     #             i = 2
@@ -1029,7 +1039,7 @@ class Sequences_base(object):
     #             newname = fixname
     #         else:
     #             raise SeqError("Attempting to change sequence name to name that is already present in sequence set: {}".format(newname))
-    # 
+    #
     #     if oldname in self.seqdict:
     #         seq = self.seqdict[oldname]
     #         seq.name = newname
@@ -1052,7 +1062,7 @@ class Sequences_base(object):
                 i += 1
                 fixname = newname + "_" + str(i)
             newname = fixname
-        
+
         if oldname in self.seqdict:
             if newname != oldname:
                 seq = self.seqdict[oldname]
@@ -1077,7 +1087,7 @@ class Sequences_base(object):
 
     def subset(self, namelist):
         """Returns new sequence collection object (of proper type) containing named sequences only"""
-        
+
         # Sanity check: are requested sequences in sequence collection?
         extranames = set(namelist) - set(self.seqnamelist)
         if extranames:
@@ -1087,14 +1097,14 @@ class Sequences_base(object):
             for name in self.seqnamelist:   # Done this way to retain ordering from original sequence collection ("namelist" has random order)
                 if name in namelist:
                     subset.addseq(self.getseq(name))     # Should I copy the seq objects before addseq'ing?
-                
+
         return subset
 
     #######################################################################################
 
     def subsample(self, samplesize):
         """Returns new sequence collection object (of proper type) containing samplesize randomly selected sequences"""
-        
+
         # Sanity check: is samplesize larger than total size of sequence set? Is it less than zero?
         if samplesize > len(self):
             raise SeqError("Requested samplesize larger than full data set")
@@ -1104,7 +1114,7 @@ class Sequences_base(object):
             subsample = self.__class__()    # Create new object of same class as self (don't know which subclass we're in)
             for seq in random.sample(list(self), samplesize):   # Note: indexing self refers to sequence objects
                 subsample.addseq(seq)
-                
+
         return subsample
 
     #######################################################################################
@@ -1120,7 +1130,7 @@ class Sequences_base(object):
             else:
                 aln_name = self.name
         subseqs = self.__class__(name = aln_name)       # Create new object of same class as self (don't know which subclass we're in)
-        
+
         for seq in self:
             newseq = seq.subseq(start, stop, slicesyntax, rename)
             subseqs.addseq(newseq)
@@ -1142,7 +1152,7 @@ class Sequences_base(object):
         # Sanity check: rangeto > rangefrom ?
         if rangefrom > rangeto:
             raise SeqError("End-of-range index is higher than start-of-range index")
-        
+
         for seq in self:
             if rangeto > len(seq):
                 raise SeqError("Range exceeds length of sequence %s: %d" % (seq.name, len(seq)))
@@ -1155,7 +1165,7 @@ class Sequences_base(object):
 
         # Removes all duplicate sequences (keeping one of each type).
         # Returns lists of identical sequences (first one in list is the one that is kept)
-        
+
         # Keep track of sets of identical sequences using list and dict:
         # simlist: list containing lists of identical sequence names
         # indexdict: keys are seqnames, value is index in simlist where name occurs
@@ -1224,7 +1234,7 @@ class Sequences_base(object):
             if namefile:
                 transfile.write("%s\t%s\n" % (newname, oldname))
             self.changeseqname(oldname, newname)
-            
+
     #######################################################################################
 
     def rename_regexp(self, pattern, namefile=None, silently_discard_dup_name=False, fix_dupnames=False):
@@ -1248,7 +1258,7 @@ class Sequences_base(object):
                 transfile.write("%s\t%s\n" % (newname, oldname))
             if (oldname != newname):
                 self.changeseqname(oldname, newname, fix_dupnames)
-            
+
     #######################################################################################
 
     def transname(self, namefile):
@@ -1266,10 +1276,10 @@ class Sequences_base(object):
                 transdict[oldname] = newname
 
         # Uses getnames() (which returns copy of namelist) to avoid iterating over list and dict while changing them
-        for oldname in self.getnames():             
+        for oldname in self.getnames():
             newname = transdict[oldname]
             self.changeseqname(oldname, newname)
-            
+
     #######################################################################################
 
     def revcomp(self):
@@ -1287,7 +1297,7 @@ class Sequences_base(object):
 
         if not self.seqtype.lower() == "dna":
             raise SeqError("Attempt to translate sequences of wrong type: {}".format(self.seqtype))
-            
+
         protseqs = self.__class__(seqtype="protein")    # Create new object of same class as self (don't know which subclass we're in)
         for seq in self:
             protseqs.addseq(seq.translate())     # Should I copy the seq objects before addseq'ing?
@@ -1436,7 +1446,7 @@ class Seq_alignment(Sequences_base):
         # (Note that iterating over Seq_alignment object itself returns one _sequence_ at a time - not column).
         # Main trick here is a class which keeps track of its enclosing alignment object ("parent"),
         # while at the same time keeping track of which column number the iteration has gotten to
-        
+
         class Col_iterator:
             """Column iterator object"""
 
@@ -1553,12 +1563,12 @@ class Seq_alignment(Sequences_base):
 
     def align_seq_pos_cache_builder(self, seqname):
         """Helper function for seqpos2alignpos and alignpos2seqpos: Builds mapping caches for given seq"""
-        
+
         self.seqpos2alignpos_cache[seqname] = []
         self.alignpos2seqpos_cache[seqname] = {}
         seq = self.getseq(seqname)
         seq_i = 0
-        
+
         for align_i in range(self.alignlen()):
             if seq[align_i] != "-":
                 gapstatus = False
@@ -1581,7 +1591,7 @@ class Seq_alignment(Sequences_base):
         if seqname not in self.seqpos2alignpos_cache:
             self.align_seq_pos_cache_builder(seqname)
 
-        # Return requested position. 
+        # Return requested position.
         # Caches are in slicesyntax (numbering starts at 0), so query and result must be corrected if non-slicesyntax requested
         if slicesyntax:
             return self.seqpos2alignpos_cache[seqname][seqpos]
@@ -1598,8 +1608,8 @@ class Seq_alignment(Sequences_base):
         # Construct caches with all info for seqname, if it is not in caches already
         if seqname not in self.alignpos2seqpos_cache:
             self.align_seq_pos_cache_builder(seqname)
- 
-        # Return requested position. 
+
+        # Return requested position.
         # Caches are in slicesyntax (numbering starts at 0), so query and result must be corrected if non-slicesyntax requested
         if slicesyntax:
             return self.alignpos2seqpos_cache[seqname][alignpos]
@@ -1611,7 +1621,7 @@ class Seq_alignment(Sequences_base):
 
     def shannon(self, countgaps=True):
         """Computes Shannon entropy for all columns in the alignment, returns list of values (index=position in seq)"""
-        
+
         # NOTE: if countgaps==True, then gaps are treated as an extra symbol. Otherwise they are ignored
         shannonlist = []
         numseqs = len(self)
@@ -1625,7 +1635,7 @@ class Seq_alignment(Sequences_base):
                 symbolfreq = float(symbolcounts[symbol]) / numseqs
                 entropy += symbolfreq * log(symbolfreq, 2)
             shannonlist.append(- entropy)
-            
+
         return shannonlist
 
     #######################################################################################
@@ -1633,10 +1643,10 @@ class Seq_alignment(Sequences_base):
     def nucfreq(self, poslist=None):
         """Computes nucleotide frequency distribution for requested columns in the alignment (default: all).
         Returns matrix of values: Rows = A, C, G, T. Column=position in seq."""
-        
+
         # NOTE: gaps and IUPAC symbols are ignored
         # NOTE 2: this could be a protein alignment - I need to make sequencetype an issue here
-        #         make dna and protein versions and set up factory method that selects proper class on construction 
+        #         make dna and protein versions and set up factory method that selects proper class on construction
         #         (needs some sequences or the type then)
         if poslist:
             nrow = len(poslist)
@@ -1644,11 +1654,11 @@ class Seq_alignment(Sequences_base):
         else:
             nrow = self.alignlen()
             positions = range(nrow)
-            
+
         freqmat = np.zeros(shape = (nrow, 4))
 
         for i,pos in enumerate(positions):
-            col = self.getcolumn(pos)             
+            col = self.getcolumn(pos)
             counts = collections.Counter(col)
             nA = counts["A"]
             nC = counts["C"]
@@ -1663,19 +1673,19 @@ class Seq_alignment(Sequences_base):
         return(freqmat)
 
     #######################################################################################
-    
+
     def consensus(self):
         """Returns consensus sequence (= most frequent symbol in each alignment column) as sequence object"""
-        
+
         # NOTE: all symbols are counted (also gaps and IUPAC). Should this be changed?
         seqlist = []
         for i in range(self.alignlen()):
-            col = self.getcolumn(i)             
+            col = self.getcolumn(i)
             nuc_counter = collections.Counter(col)
             [(nuc, count)] = nuc_counter.most_common(1) # Method returns list of one tuple, which is unpacked
             seqlist.append(nuc)
         seq_string = "".join(seqlist)
-        
+
         seq_class = self[0].__class__   # Hack to find class (DNA, Protein, ...) of Sequence objects in this alignment
         con_seq = seq_class(name=self.name, seq=seq_string)
 
@@ -1694,19 +1704,19 @@ class Seq_alignment(Sequences_base):
         return seqset
 
     # #######################################################################################
-    # 
+    #
     # def subseq(self, start, stop, slicesyntax=True, rename=False):
     #     """Returns specified columns from alignment as new Seq_alignment object"""
-    # 
+    #
     #     # If slicesyntax is False: indexing starts at 1, and stop is included
     #     # If rename is True: start and stop indices added to name
     #     subseqs = Seq_alignment(self.name)
     #     for seq in self:
     #         newseq = seq.subseq(start, stop, slicesyntax, rename)
     #         subseqs.addseq(newseq)
-    # 
+    #
     #     return subseqs
-    # 
+    #
     #######################################################################################
 
     def addseq(self, seq, silently_discard_dup_name=False):
@@ -1717,7 +1727,7 @@ class Seq_alignment(Sequences_base):
         else:
             if len(seq) != len(self[0]):
                 raise SeqError("Not an alignment: these sequences have different lengths: %s and %s" % (seq.name, self[0].name))
-                
+
         # If length was OK, add sequence by calling baseclass method
         Sequences_base.addseq(self, seq, silently_discard_dup_name)
 
@@ -1750,7 +1760,7 @@ class Seq_alignment(Sequences_base):
 
     def partitions_as_seqalignments(self):
         """Returns list containing all partitions as Seq_alignment objects"""
-        
+
         plist = []
         for i in range(len(self.partitions)):
             name = self.partitions[i][0]
@@ -1760,7 +1770,7 @@ class Seq_alignment(Sequences_base):
             pstop = pstart + self.partitions[i][2]
             part_alignment = self.subseq(pstart, pstop, rename=True, aln_name=name)
             plist.append(part_alignment)
-            
+
         return plist
 
     #######################################################################################
@@ -1840,7 +1850,7 @@ class Seq_alignment(Sequences_base):
             align1dict[seq.name] = seq2index(seq.seq)
         for seq in other:
             align2dict[seq.name] = seq2index(seq.seq)
-            
+
         # For each pair of sequences in each alignment:
         # construct list of tuples representation of mapping, compute overlap by set arithmetic
         for s1, s2 in itertools.combinations(self, 2):
@@ -1940,13 +1950,13 @@ class Seq_alignment(Sequences_base):
             conservation = []
             for i in range(alignlen):
                 col = set(self.getcolumn(i))    # set() automatically uniquefies list of symbols
-                if len(col) ==1:                
+                if len(col) ==1:
                     conservation.append("*")    # Only one symbol: full conservation = "*"
-                elif containsset(col, cons_sub): 
+                elif containsset(col, cons_sub):
                     conservation.append(":")    # Conserved substitutions = ":"
                 elif containsset(col, semicons_sub):
                     conservation.append(".")    # Semiconserved substitutions = "."
-                else:                           
+                else:
                     conservation.append(" ")    # High diversity = " "
 
         # Format is "DNA" or "other"
@@ -1956,9 +1966,9 @@ class Seq_alignment(Sequences_base):
             conservation = []
             for i in range(alignlen):
                 col = set(self.getcolumn(i))    # set() automatically uniquefies list of symbols
-                if len(col) ==1:                
+                if len(col) ==1:
                     conservation.append("*")    # Only one symbol: full conservation = "*"
-                else:                           
+                else:
                     conservation.append(" ")    # Non conserved column = " "
 
         # Convert to string
@@ -1973,7 +1983,7 @@ class Seq_alignment(Sequences_base):
 
         # Add blocks
         for i in range(numseqblocks):
-        
+
             # Sequence block, with names
             for seq in self:
                 clustal.append(seq.name.ljust(frontspace))
@@ -2011,7 +2021,7 @@ class Seq_alignment(Sequences_base):
                     nexus.append("\n")
                 nexus.append("\n")
             del nexus[-1:]              # Added one newline too many
-            
+
         ####################################################################################
 
         alignlen = self.alignlen()
@@ -2030,7 +2040,7 @@ class Seq_alignment(Sequences_base):
         nexus.append("    dimensions ntax=%d nchar=%d;\n" % (numseq, alignlen))
         nexus.append("    format datatype=%s interleave=yes gap=-;\n\n" % (seqtype))
         nexus.append("    matrix\n")
-        
+
         # Sequence blocks. Divides nexus file into one subsection per partition if requested
         if print_partitioned:
             for i in range(len(self.partitions)):
@@ -2041,7 +2051,7 @@ class Seq_alignment(Sequences_base):
                 add_partition(self.partitions[i][1], self.partitions[i][2])
         else:
             add_partition(0, alignlen)
-        
+
         # Footer
         nexus.append(";\nend;")
 
@@ -2052,7 +2062,7 @@ class Seq_alignment(Sequences_base):
     def nexusgap(self, width=60):
         """Returns nexus-formatted alignment with binary gap encoding, mixed mrbayes format, as string"""
 
-        alignlen = self.alignlen()      
+        alignlen = self.alignlen()
         numseq = len(self)
         numseqblocks = int(ceil(alignlen/float(width)))
         seqtype = self.seqtype.lower()
@@ -2066,7 +2076,7 @@ class Seq_alignment(Sequences_base):
         # Note: alignment is prepended with binary encoding of same length
         nexus = ["#NEXUS\n\n"]
         nexus.append("begin data;\n")
-        nexus.append("dimensions ntax=%d nchar=%d;\n" % (numseq, 2 * alignlen)) 
+        nexus.append("dimensions ntax=%d nchar=%d;\n" % (numseq, 2 * alignlen))
         nexus.append('format datatype=mixed(restriction:1-%d,%s:%d-%d) interleave=yes gap=-;\n\n' %
                                                  (alignlen, seqtype, alignlen + 1, 2 * alignlen))
         nexus.append("matrix\n")
@@ -2098,9 +2108,9 @@ class Seq_alignment(Sequences_base):
 
     def charsetblock(self):
         """Returns MrBayes block with charset commands for partitioned analysis as string"""
-        
+
         numpartitions = len(self.partitions)
-        
+
         # Find longest name and longest number to enable properly aligned output
         namewidth = 0
         for i in range(numpartitions):
@@ -2108,10 +2118,10 @@ class Seq_alignment(Sequences_base):
             namewidth = max(namewidth, len(name))
         largestnum = self.partitions[numpartitions-1][1] + self.partitions[numpartitions-1][2] - 1
         numwidth = floor( log10( largestnum ) + 1 )
-        
+
         # Header
         block = ["begin mrbayes;\n"]
-        
+
         # Charset commands
         block.append("    [Charset commands:]\n")
         for i in range(numpartitions):
@@ -2119,9 +2129,9 @@ class Seq_alignment(Sequences_base):
             start = self.partitions[i][1]
             stop = start + self.partitions[i][2] - 1
             block.append("    charset {n:{naw}} = {b:d}-{e:d};\t[partition no. {p}]\n".format(naw=namewidth,
-                                                                                                  n=name, 
-                                                                                                  b=start + 1, 
-                                                                                                  e=stop + 1, 
+                                                                                                  n=name,
+                                                                                                  b=start + 1,
+                                                                                                  e=stop + 1,
                                                                                                   p=i + 1)) # +1: not list syntax
         block.append("    partition allgenes = %d: " % numpartitions)
         for i in range(numpartitions):
@@ -2134,29 +2144,29 @@ class Seq_alignment(Sequences_base):
         del block[-1]               # Added one comma too many
         block.append(";\n")
         block.append("    set partition = allgenes;\n")
-        
+
         # Footer
         block.append("end;\n")
         return "".join(block)
-        
+
 
     #######################################################################################
 
     def mbpartblock(self):
         """Returns MrBayes block for partitioned analysis as string"""
-        
+
         numpartitions = len(self.partitions)
-        
+
         # Header
         block = ["begin mrbayes;\n    set autoclose=yes nowarn=yes;\n"]
-        
+
         block.append("\n\n    [######################################################################################]\n\n")
-        
+
         # Outgroup command
-        block.append("    [Outgroup command:]\n") 
+        block.append("    [Outgroup command:]\n")
         block.append("    [An outgroup may be specified. Replace MYOUTGROUP with actual value]\n\n")
         block.append("    [outgroup MYOUTGROUP;]\n")
-        
+
         block.append("\n\n    [######################################################################################]\n\n")
 
         # Charset commands
@@ -2181,9 +2191,9 @@ class Seq_alignment(Sequences_base):
         del block[-1]               # Added one comma too many
         block.append(";\n")
         block.append("    set partition = allgenes;\n")
-        
+
         block.append("\n\n    [######################################################################################]\n\n")
-        
+
         # Model specification commands
         block.append("    [Substitution model commands:]\n")
         block.append("    [Specify substitution models for each partition. Different partitions may all use the \n")
@@ -2214,29 +2224,29 @@ class Seq_alignment(Sequences_base):
         block.append("    mcmcp ngen=1000000 nchain=3 samplefreq=1000 diagnfreq=50000 printfreq=5000;\n")
 
         block.append("\n\n    [######################################################################################]\n\n")
-        
+
         # Add final end statement and return mrbayes block as string
         block.append("end;\n")
         return "".join(block)
-        
+
 
     #######################################################################################
 
     def bestblock(self):
         """Returns MrBayes block for BEST (species tree) analysis as string"""
-        
+
         numpartitions = len(self.partitions)
-        
+
         # Header
         bestblock = ["begin mrbayes;\n    set autoclose=yes nowarn=yes;\n"]
-        
+
         bestblock.append("\n\n    [######################################################################################]\n\n")
-        
+
         # Outgroup command
-        bestblock.append("    [Outgroup command:]\n") 
+        bestblock.append("    [Outgroup command:]\n")
         bestblock.append("    [An outgroup has to be specified. Replace MYOUTGROUP with actual value]\n\n")
         bestblock.append("    outgroup MYOUTGROUP;\n")
-        
+
         bestblock.append("\n\n    [######################################################################################]\n\n")
 
         # Taxset commands
@@ -2250,7 +2260,7 @@ class Seq_alignment(Sequences_base):
         seqnames = self.getnames()
         for i in range(numpartitions):
             bestblock.append("    taxset %10s = %6d;\n" % (seqnames[i], i + 1))
-            
+
         bestblock.append("\n\n    [######################################################################################]\n\n")
 
         # Charset commands
@@ -2275,9 +2285,9 @@ class Seq_alignment(Sequences_base):
         del bestblock[-1]               # Added one comma too many
         bestblock.append(";\n")
         bestblock.append("    set partition = allgenes;\n")
-        
+
         bestblock.append("\n\n    [######################################################################################]\n\n")
-        
+
         # Model specification commands
         bestblock.append("    [Substitution model commands:]\n")
         bestblock.append("    [Specify substitution models for each partition. Different partitions may all use the \n")
@@ -2320,7 +2330,7 @@ class Seq_alignment(Sequences_base):
             bestblock.append(") aamodelpr=fixed(wag);\n    lset applyto=(all) rates=invgamma]\n")
 
         bestblock.append("\n\n    [######################################################################################]\n\n")
-        
+
         # BEST specific prset commands
         bestblock.append("    [BEST specific prset commands:]\n")
         bestblock.append("    [BEST: this parameter initiates the Bayesian analysis for estimating species trees when\n")
@@ -2329,7 +2339,7 @@ class Seq_alignment(Sequences_base):
         bestblock.append("    distribution with parameters alpha and beta. The mean of the inverse gamma distribution is\n")
         bestblock.append("    beta/(alpha - 1). Users should choose reasonable values for alpha and beta such that the\n")
         bestblock.append("    prior mean of the population size theta is in a reasonable range. In the example below\n")
-        bestblock.append("    thetapr=invgamma(3,0.003) implies that the prior mean of the theta is 0.0015.\n") 
+        bestblock.append("    thetapr=invgamma(3,0.003) implies that the prior mean of the theta is 0.0015.\n")
         bestblock.append("    genemupr: this parameter sets the prior distribution for the mutation rates across genes.\n")
         bestblock.append("    Two options: genemupr=uniform or genemupr=fixed(a).]\n\n")
         bestblock.append("    prset thetapr=invgamma(3,0.003) GeneMuPr=uniform(0.5,1.5) BEST=1;\n")
@@ -2355,30 +2365,30 @@ class Seq_alignment(Sequences_base):
         bestblock.append("    [Specify how to run MCMC and possibly sump and sumt as for a regular MrBayes run]\n")
 
         bestblock.append("\n\n    [######################################################################################]\n\n")
-        
+
         # Add final end statement and return mrbayes block as string
         bestblock.append("end;\n")
         return "".join(bestblock)
-        
+
 
     #######################################################################################
     #######################################################################################
 
     def nexuspart(self):
         """Returns MrBayes block for partitioned data set as string"""
-        
+
         numpartitions = len(self.partitions)
-        
+
         # Header
         bestblock = ["begin mrbayes;\n    set autoclose=yes nowarn=yes;\n"]
-        
+
         bestblock.append("\n\n    [######################################################################################]\n\n")
-        
+
         # Outgroup command
-        bestblock.append("    [Outgroup command:]\n") 
+        bestblock.append("    [Outgroup command:]\n")
         bestblock.append("    [An outgroup has to be specified. Replace MYOUTGROUP with actual value]\n\n")
         bestblock.append("    outgroup MYOUTGROUP;\n")
-        
+
         bestblock.append("\n\n    [######################################################################################]\n\n")
 
         # Taxset commands
@@ -2392,7 +2402,7 @@ class Seq_alignment(Sequences_base):
         seqnames = self.getnames()
         for i in range(numpartitions):
             bestblock.append("    taxset %10s = %6d;\n" % (seqnames[i], i + 1))
-            
+
         bestblock.append("\n\n    [######################################################################################]\n\n")
 
         # Charset commands
@@ -2417,9 +2427,9 @@ class Seq_alignment(Sequences_base):
         del bestblock[-1]               # Added one comma too many
         bestblock.append(";\n")
         bestblock.append("    set partition = allgenes;\n")
-        
+
         bestblock.append("\n\n    [######################################################################################]\n\n")
-        
+
         # Model specification commands
         bestblock.append("    [Substitution model commands:]\n")
         bestblock.append("    [Specify substitution models for each partition. Different partitions may all use the \n")
@@ -2446,7 +2456,7 @@ class Seq_alignment(Sequences_base):
             bestblock.append(") aamodelpr=mixed;\n    lset applyto=(all) rates=invgamma]\n")
 
         bestblock.append("\n\n    [######################################################################################]\n\n")
-        
+
         # BEST specific prset commands
         bestblock.append("    [BEST specific prset commands:]\n")
         bestblock.append("    [BEST: this parameter initiates the Bayesian analysis for estimating species trees when\n")
@@ -2455,7 +2465,7 @@ class Seq_alignment(Sequences_base):
         bestblock.append("    distribution with parameters alpha and beta. The mean of the inverse gamma distribution is\n")
         bestblock.append("    beta/(alpha - 1). Users should choose reasonable values for alpha and beta such that the\n")
         bestblock.append("    prior mean of the population size theta is in a reasonable range. In the example below\n")
-        bestblock.append("    thetapr=invgamma(3,0.003) implies that the prior mean of the theta is 0.0015.\n") 
+        bestblock.append("    thetapr=invgamma(3,0.003) implies that the prior mean of the theta is 0.0015.\n")
         bestblock.append("    genemupr: this parameter sets the prior distribution for the mutation rates across genes.\n")
         bestblock.append("    Two options: genemupr=uniform or genemupr=fixed(a).]\n\n")
         bestblock.append("    prset thetapr=invgamma(3,0.003) GeneMuPr=uniform(0.5,1.5) BEST=1;\n")
@@ -2481,11 +2491,11 @@ class Seq_alignment(Sequences_base):
         bestblock.append("    [Specify how to run MCMC and possibly sump and sumt as for a regular MrBayes run]\n")
 
         bestblock.append("\n\n    [######################################################################################]\n\n")
-        
+
         # Add final end statement and return mrbayes block as string
         bestblock.append("end;\n")
         return "".join(bestblock)
-        
+
 
     #######################################################################################
 
@@ -2533,12 +2543,12 @@ class Seq_alignment(Sequences_base):
 ##    ('B', 'D') : 4
 ##    ('H', 'N') : 1
 ##    ('S', 'N') : 1
-##    ('E', 'Q') : 2 
+##    ('E', 'Q') : 2
 ##    ('Y', 'W') : 2
 ##    ('K', 'Q') : 1
 ##    ('M', 'L') : 2
 ##    ('K', 'E') : 1
-##    ('Z', 'E') : 4 
+##    ('Z', 'E') : 4
 ##    ('Z', 'Q') : 3
 ##    ('B', 'E') : 1
 ##    ('S', 'A') : 1
@@ -2547,7 +2557,7 @@ class Seq_alignment(Sequences_base):
 ##    ('L', 'I') : 2
 ##    ('Z', 'B') : 1
 ##    ('B', 'N') : 3
-## 
+##
 ##
 
 ###############################################################################################
@@ -2565,7 +2575,7 @@ class Distmatrix(object):
     # NOTE: write constructor that will accept practically any form of distance matrix input
     # and parse it to own format, raising exception if data is missing (or not? make an option?)
     # should at least accept input where distmat is dictionary and key can be tuple unpacked
-    # into two names. Other formats? 
+    # into two names. Other formats?
 
     #######################################################################################
 
@@ -2585,12 +2595,12 @@ class Distmatrix(object):
         values = []
         for i in range(1, len(dmatdata)):
             values.append(dmatdata[i].split())
-            
+
         for i,j in itertools.combinations(range(len(names)), 2):
             self.setdist(names[i], names[j], float(values[i][j]))
 
         return self
-    
+
     #######################################################################################
 
     @classmethod
@@ -2607,11 +2617,11 @@ class Distmatrix(object):
             name1 = words[0]
             name2 = words[1]
             similarity = float(words[2])
-            dist = maxdist * (1.0 - similarity) 
+            dist = maxdist * (1.0 - similarity)
             self.setdist(name1, name2, dist)
 
         return self
-    
+
     #######################################################################################
 
     @classmethod
@@ -2622,19 +2632,19 @@ class Distmatrix(object):
         for ((name1, name2), dist) in distdict.items():
             self.setdist(name1, name2, dist)
         return self
-    
+
     #######################################################################################
 
     def __str__(self):
         """Prints all pairwise distances"""
 
         return self.textformat()
-        
+
     #######################################################################################
 
     def __len__(self):
         """Implements len() operator for distance matrix objects = number of nodes"""
-        
+
         return len(self.names)
 
     #######################################################################################
@@ -2684,7 +2694,7 @@ class Distmatrix(object):
             tmplist.append("\t")
         tmplist.pop()
         tmplist.append("\n")
-        
+
         # Body of matrix. Same order as nameline
         for name1 in namelist:
             for name2 in namelist:
@@ -2693,13 +2703,13 @@ class Distmatrix(object):
             tmplist.pop()
             tmplist.append("\n")
 
-        return "".join(tmplist)        
+        return "".join(tmplist)
 
     #######################################################################################
 
     def sortdists(self):
         """Creates sorted list of (dist, (name1, name2)) tuples, sorted on dists"""
-        self.sorted = []    
+        self.sorted = []
         for name1, name2 in itertools.combinations(self.getnames(), 2):
             self.sorted.append((self.dmat[(name1,name2)], (name1, name2)))
         self.sorted.sort()
@@ -2722,23 +2732,23 @@ class Distmatrix(object):
         # First time: initialize clusterdict so each seqname points to set containing itself (each seq is its own cluster)
         if not self.clusterdict:
             self.clusterdict = {name:{name} for name in self.names}
-            
+
         # Construct suitable name for new cluster if one was not provided
         if not newnode:
             newnode = "%s_%s" % (node1, node2)
-            
-        # Add newnode to clusterdict, and set it to point to intersection of what node1 and node2 points to 
-        # (NB: node1 and/or node2 may either be simple nodes, pointing to themselves, or merged nodes pointing to sets of nodes) 
+
+        # Add newnode to clusterdict, and set it to point to intersection of what node1 and node2 points to
+        # (NB: node1 and/or node2 may either be simple nodes, pointing to themselves, or merged nodes pointing to sets of nodes)
         self.clusterdict[newnode] = self.clusterdict[node1] | self.clusterdict[node2]
 
         # Update list of active names: remove node1 and node2, add newnode
         self.names.add(newnode)
         self.names.remove(node1)
         self.names.remove(node2)
-        
+
         # Clean up list of sorted distances: remove entries with node1 or node2
         self.sorted[:] = [(dist, nametup) for (dist, nametup) in self.sorted if (node1 not in nametup and node2 not in nametup)]
-        
+
         # For each node in distmat (except newnode itself): compute distance between node and newnode, add to distmat and sortedlist
         # Distance is found by averaging distances between the sets of cluster components in node and newnode respectively
         newnodeleafs = self.clusterdict[newnode]
@@ -2753,7 +2763,7 @@ class Distmatrix(object):
             self.dmat[(oldnode, newnode)] = avdist
             self.sorted.append((avdist, (oldnode, newnode)))
         self.sorted.sort()
-        
+
     #######################################################################################
 
     def pairdists(self):
@@ -2762,7 +2772,7 @@ class Distmatrix(object):
         namelist = list(self.names)
         nseqs = len(namelist)
         distlist = []
-        
+
         for i in range(nseqs):
             seq1 = namelist[i]
             for j in range(i+1, nseqs):
@@ -2784,14 +2794,14 @@ class Distmatrix(object):
         mean_prev = var_prev = num_vals = 0.0
         namelist = list(self.names)
         nseqs = len(namelist)
-        
+
         for i in range(nseqs):
             seq1 = namelist[i]
             for j in range(i+1, nseqs):
                 num_vals += 1.0
                 seq2 = namelist[j]
                 dist = self.getdist(seq1, seq2)
-                
+
                 # Online (single-pass) computation of mean and variance
                 diff = dist - mean_prev
                 mean_cur = mean_prev + diff / num_vals
@@ -2816,7 +2826,7 @@ class Seqfile_reader(object):
         if nameishandle:
             self.filename = "handle"
             self.seqfile = filename
-        
+
         # Special filename "-" indicates stdin.
         # Read all data from stdin, place it in virtual (RAM) file, and use that instead of real file
         elif filename == "-":
@@ -2842,12 +2852,12 @@ class Seqfile_reader(object):
 
     def makeseq(self, name, seq, annotation="", comments=""):
         """Takes name, sequence, annotation, and comments, returns sequence object of correct type"""
-        
+
         # Called by subclass
 
         # Convert to upper case
         seq = seq.upper()
-        
+
         # Determine seqtype.
 
         # If autodetection of seqtype is requested: compare letters in seq to possible alphabets.
@@ -2867,7 +2877,7 @@ class Seqfile_reader(object):
                 raise SeqError("Unknown symbols encountered during seqtype autodetection: %s" %
                                (list(seqletters - Const.ASCII)))
 
-        # If specific seqtype requested, use that        
+        # If specific seqtype requested, use that
         elif self.seqtype == "DNA":
             return DNA_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
         elif self.seqtype == "protein":
@@ -2894,8 +2904,8 @@ class Seqfile_reader(object):
         seqset = Seq_set(name)
         for seq in self:
             seqset.addseq(seq, silently_discard_dup_name)
-        return seqset        
-        
+        return seqset
+
     #######################################################################################
 
     def read_alignment(self, silently_discard_dup_name=False):
@@ -2908,7 +2918,7 @@ class Seqfile_reader(object):
         alignment = Seq_alignment(name)
         for seq in self:
             alignment.addseq(seq, silently_discard_dup_name)
-        return alignment        
+        return alignment
 
 #############################################################################################
 #############################################################################################
@@ -2930,7 +2940,7 @@ class Fastafilehandle(Seqfile_reader):
 
     #######################################################################################
 
-    def __iter__(self):     
+    def __iter__(self):
         return self
 
     #######################################################################################
@@ -3004,7 +3014,7 @@ class Howfilehandle(Seqfile_reader):
 
     #######################################################################################
 
-    def __iter__(self):     
+    def __iter__(self):
         return self
 
     #######################################################################################
@@ -3040,7 +3050,7 @@ class Howfilehandle(Seqfile_reader):
         words = nameline.split()
         seqlen = int(words[0])
         name = words[1]
-        comments = " ".join(words[2:])           
+        comments = " ".join(words[2:])
         seqann = "".join(seqlist)
         seqann = seqann.translate(self.alltrans)        # Remove whitespace and numbering
         seq = seqann[:seqlen]
@@ -3058,7 +3068,7 @@ class Genbankfilehandle(Seqfile_reader):
 
     def __init__(self, filename, seqtype="autodetect", check_alphabet=False, degap=False, nameishandle=False,
                     namefromfeatures=None):
-        
+
         self.namefromfeatures = namefromfeatures
         if namefromfeatures:
             class Featurestruct(object):
@@ -3069,7 +3079,7 @@ class Genbankfilehandle(Seqfile_reader):
             self.featuredict = {}
             for feature in self.featurelist:
                 self.featuredict[feature] = Featurestruct()
-                
+
         Seqfile_reader.__init__(self, filename, seqtype, check_alphabet, degap, nameishandle)
 
         # Perform "magic number" check of whether file appears to be in GenBank format
@@ -3083,7 +3093,7 @@ class Genbankfilehandle(Seqfile_reader):
 
     #######################################################################################
 
-    def __iter__(self):     
+    def __iter__(self):
         return self
 
     #######################################################################################
@@ -3095,7 +3105,7 @@ class Genbankfilehandle(Seqfile_reader):
         # Note 2: It is probably rarely (if ever?) that there is more than one sequence in a
         #         genbank file, but I implemented like this to be consistent
         # Note 3: Most of complexity of handling genbank files in this function is due to handling of name
-        #         There are three name-scenarios: 
+        #         There are three name-scenarios:
         #           (1) name should be derived from features listed in "namefromfeatures" option
         #           (2) if option 1 not requested: name is constructed from VERSION feature
         #           (3) if option 1 not requested and VERSION field not present: use LOCUS feature instead
@@ -3107,12 +3117,12 @@ class Genbankfilehandle(Seqfile_reader):
         line = self.seqfile.readline()
         while not line.startswith("//"):
             words = line.split()
-            # Skip empty lines. Bit of a hack, should rethink 
+            # Skip empty lines. Bit of a hack, should rethink
             if not line.strip():
                 line = self.seqfile.readline()
                 continue
-            
-            # FEATURES: if option "namefromfeatures" is set: construct name from listed features; 
+
+            # FEATURES: if option "namefromfeatures" is set: construct name from listed features;
             # keep track of whether all listed features have been seen
             if self.namefromfeatures and (words[0] in self.featurelist):
                 currentfield = words[0]
@@ -3151,7 +3161,7 @@ class Genbankfilehandle(Seqfile_reader):
             # DEFINITION, after first line: add content to comments
             elif line.startswith("            ") and currentfield == "DEFINITION":
                 comments += " ".join(words)
-                
+
             # ORIGIN: sequence starts on next line:
             elif words[0] == "ORIGIN":
                 currentfield = "ORIGIN"
@@ -3164,16 +3174,16 @@ class Genbankfilehandle(Seqfile_reader):
             # Other fields
             else:
                 currentfield = None
-                
+
             line = self.seqfile.readline()
 
         # EOF marker // has been reached, and iteration should stop
         self.seqfile.close()
         raise StopIteration()
-        # NOTE: I think I need to have some sort of eof check somwehere but am unsure how that combines with 
+        # NOTE: I think I need to have some sort of eof check somwehere but am unsure how that combines with
         # potential multi sequence gb file (so should continue after //. IS stopiteration for one seq or full file???)
-        
-        
+
+
         # If option was requested: Set name using value fields in listed features. Check that all features were seen
         if self.namefromfeatures:
             name = ""
@@ -3185,15 +3195,15 @@ class Genbankfilehandle(Seqfile_reader):
                         name += "_" + self.featuredict[feature].value
                     else:
                         name += self.featuredict[feature].value
-                    
+
         # Else use accession number and GI from VERSION field
         elif accno:
             name = accno
-            
+
         # If none of the above were present: fall back on name from LOCUS field
         else:
             name = locusname
-            
+
         annotation = ""         # Note: should parse annotation from features
         seq = "".join(seqlist)
 
@@ -3219,10 +3229,10 @@ class Tabfilehandle(Seqfile_reader):
         # If everything was kosher: move filepointer back to beginning of file
         else:
             self.seqfile.seek(0)
-    
+
     #######################################################################################
 
-    def __iter__(self):     
+    def __iter__(self):
         return self
 
     #######################################################################################
@@ -3241,7 +3251,7 @@ class Tabfilehandle(Seqfile_reader):
         line = line.rstrip()
         words = line.split("\t")        # Splitting on tab: strict parsing
         numwords = len(words)
-        
+
         if numwords == 1:
             raise SeqError("This line does not appear to be in TAB format: %s" % line)
         else:
@@ -3267,12 +3277,12 @@ class Rawfilehandle(Seqfile_reader):
 
         # Counter used to assign continuously numbered names to RAW sequences
         self.cur_seq_no = 1
-        
+
         Seqfile_reader.__init__(self, filename, seqtype, check_alphabet, degap, nameishandle)
 
     #######################################################################################
 
-    def __iter__(self):     
+    def __iter__(self):
         return self
 
     #######################################################################################
@@ -3305,7 +3315,7 @@ class Rawfilehandle(Seqfile_reader):
 
 class Alignfile_reader(object):
     """Baseclass for alignment-type sequence file readers"""
-    
+
     # Note: Unlike non-alignment sequence files, alignment files do not have iteration defined:
     # You typically will have to read the entire alignment before processing
 
@@ -3314,7 +3324,7 @@ class Alignfile_reader(object):
         # If nameishandle==True, directly assign this as filehandle (should I do error checking?)
         if nameishandle:
             self.seqfile = filename
-        
+
         # Special filename "-" indicates stdin.
         # Read all data from stdin, place it in virtual (RAM) file, and use that instead of real file
         elif filename == "-":
@@ -3347,7 +3357,7 @@ class Alignfile_reader(object):
 
         # Convert to upper case
         seq = seq.upper()
-        
+
         # Determine seqtype.
 
         # If autodetection of seqtype is requested: compare letters in seq to possible alphabets.
@@ -3367,7 +3377,7 @@ class Alignfile_reader(object):
                 raise SeqError("Unknown symbols encountered during seqtype autodetection: %s" %
                                (list(seqletters - Const.ASCII)))
 
-        # If specific seqtype requested, use that        
+        # If specific seqtype requested, use that
         elif self.seqtype == "DNA":
             return DNA_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
         elif self.seqtype == "protein":
@@ -3380,7 +3390,7 @@ class Alignfile_reader(object):
     #######################################################################################
 
     def read_seqs(self, silently_discard_dup_name=False):
-        
+
         aligned_seqs = self.read_alignment(silently_discard_dup_name)
         return aligned_seqs.seqset()
 
@@ -3415,19 +3425,19 @@ class Clustalfilehandle(Alignfile_reader):
         lineno = 1
         while  len(self.seqdata[lineno].strip()) == 0:
             lineno += 1
-        
+
         # Iterate over remaining lines, adding sequences to dictionary as we go
         seqdict = {}
         for i in range(lineno,len(self.seqdata)):
             line = self.seqdata[i]
-            
+
             # If line is not empty and does not start with whitespace, then it must contain sequence info
             if len(line) and not line[0].isspace():
                 words = line.split()
                 name = words[0]
                 seq = "".join(words[1:])        # join: in case sequence is divided into blocks
                 seq = re.sub("[0-9]*", "", seq) # remove numbering if present
-                
+
                 # If name has been seen before: add next seq fragment to existing list of strings
                 if name in seqdict:
                     seqdict[name].append(seq)
@@ -3480,7 +3490,7 @@ class Phylipfilehandle(Alignfile_reader):
         alignlen = int(words[1])
 
         # Read sequences one line at a time, discarding blank lines, constantly keeping track of names
-        # NOTE: could make this more efficient if I made more assumptions about file structure 
+        # NOTE: could make this more efficient if I made more assumptions about file structure
         #   (e.g., same order of names in consecutive blocks)
         i = 0
         seqdict = {}
@@ -3514,21 +3524,21 @@ class Phylipfilehandle(Alignfile_reader):
         return alignment
 
     # #######################################################################################
-    # 
+    #
     # def read_alignment(self, silently_discard_dup_name=False):
     #     """Reads all sequences, returns them as Seq_alignment object"""
-    # 
+    #
     #     if self.filename == "stdin" or self.filename == "handle":
     #         name = "Partition"
     #     else:
     #         name = os.path.split(self.filename)[1].split(".")[0]    # Discard path and extension from file name
     #     alignment = Seq_alignment(name)
-    # 
+    #
     #     # Line no. 0 contains Phylip header. Extract number of sequences (ignore alignment length)
     #     words = self.seqdata[0].split()
     #     nseqs = int(words[0])
     #     seqlist = [[] for i in range(nseqs)]
-    # 
+    #
     #     # Read first block of phylip alignment, add name and first seqblock to list for each seq.
     #     for i in range(1, nseqs + 1):
     #         line = self.seqdata[i]
@@ -3541,18 +3551,18 @@ class Phylipfilehandle(Alignfile_reader):
     #         else:
     #             seq = seq.translate(self.alltrans)              # Remove whitespace and numbering
     #         seqlist[i-1] = [name, seq]
-    # 
+    #
     #     # Read remaining sequence blocks, add seq string to appropriate index in seqlist
     #     n_remaining_lines = len(self.seqdata) - nseqs - 2
     #     n_remaining_blocks = (n_remaining_lines + 1) // (nseqs + 1)
-    # 
+    #
     #     for blockno in range(1, n_remaining_blocks + 1):
     #         for i in range(nseqs):
     #             line = self.seqdata[blockno*(nseqs+1) + 1 + i]
     #             words = line.split()
     #             seq = "".join(words)
     #             seqlist[i].append(seq)
-    # 
+    #
     #     # For each entry in sequence dictionary:  Join list of strings to single string,
     #     # convert to Sequence object of proper type, add Sequence object to alignment object
     #     for item in seqlist:
@@ -3560,9 +3570,9 @@ class Phylipfilehandle(Alignfile_reader):
     #         seq = "".join(item[1:])
     #         seqobject = Alignfile_reader.makeseq(self, name, seq)
     #         alignment.addseq(seqobject, silently_discard_dup_name)
-    # 
+    #
     #     return alignment
-    # 
+    #
 #############################################################################################
 #############################################################################################
 
@@ -3609,7 +3619,7 @@ class Nexusfilehandle(Alignfile_reader):
             # If semicolon reached, then entire matrix block has been read: stop iteration
             if ";" in line:
                 break
-            
+
             # Skip blank lines, parse lines with text
             words = line.split()
             if len(words)>0:
@@ -3649,7 +3659,7 @@ class Seqfile(object):
     # Also implements filetype autodetection (should that go somewhere else?)
     def __new__(klass, filename, filetype="autodetect", seqtype="autodetect", check_alphabet=False,
                 degap=False, nameishandle=False):
-        
+
         known_handles = {"raw": Rawfilehandle, "tab": Tabfilehandle, "fasta": Fastafilehandle,
                    "nexus": Nexusfilehandle, "phylip": Phylipfilehandle, "clustal": Clustalfilehandle,
                     "genbank": Genbankfilehandle, "how": Howfilehandle}
@@ -3658,7 +3668,7 @@ class Seqfile(object):
         if filetype in known_handles:
             return known_handles[filetype](filename, seqtype, check_alphabet, degap, nameishandle)
 
-        # If autodetection of "filetype" is requested: 
+        # If autodetection of "filetype" is requested:
         # Perform "magic number" test based on first line in file. Likely to not always work...
         elif filetype == "autodetect":
 
@@ -3675,7 +3685,7 @@ class Seqfile(object):
                 tempfile = open(filename)
                 firstline = tempfile.readline()
                 tempfile.close()
-            
+
             if firstline.startswith(">"):
                 filetype = "fasta"
             elif firstline.lower().startswith("#nexus"):
@@ -3692,7 +3702,7 @@ class Seqfile(object):
             elif (len(firstline.split()) >= 2) and (firstline.split()[0].isdigit) and firstline[6] == " ":
                 filetype = "how"
             else:
-                # If all other tests did not work: raise SeqError 
+                # If all other tests did not work: raise SeqError
                 raise SeqError("Cannot autodetect type of sequence file: %s" % filename)
             return known_handles[filetype](filename, seqtype, check_alphabet, degap, nameishandle)
 
@@ -3703,17 +3713,17 @@ class Seqfile(object):
 #############################################################################################
 
 class vcf(object):
-    
-    # NOTE: rewrite to base parsing on actual info in INFO header. 
+
+    # NOTE: rewrite to base parsing on actual info in INFO header.
     # Or perhaps simply to take into account most common fields in INFO:
     #   https://en.wikipedia.org/wiki/Variant_Call_Format
-    
-    def __init__(self):        
+
+    def __init__(self):
         self.snpdict = {}
         self.refdict = {}
         self.snpposcache = None
         self.refseq = None
-                        
+
     #######################################################################################
 
     # VCF file format (header lines + example of SNP)
@@ -3728,7 +3738,7 @@ class vcf(object):
     @classmethod
     def from_vcffile(cls, filename, pos1=1, include_min=None, include_max=None):
         """Constructor 1: constructs vcf object from standard VCF file"""
-        # pos1: for mapping between VCF file POS and some external numbering system. 
+        # pos1: for mapping between VCF file POS and some external numbering system.
         #       pos1 = VCF POS that is position 1 in outside system
         # include_min, include_max: optional cutoffs in sequence below and above which to discard SNP info
 
@@ -3737,7 +3747,7 @@ class vcf(object):
             for line in myf:
                 if not line.startswith("#"):
                     words = line.split()
-                    
+
                     # Compute position according to outside numbering scheme
                     # Discard positions if requested
                     pos = int(words[1]) - pos1 + 1          # NOTE: should I use python numbering here? need to think..
@@ -3747,13 +3757,13 @@ class vcf(object):
                         refnuc = words[3]
                         altnuc = words[4]
                         if pos not in self.snpdict:
-                            self.snpdict[pos] = {   "A":{"count":0, "freq":0.0}, 
+                            self.snpdict[pos] = {   "A":{"count":0, "freq":0.0},
                                                     "C":{"count":0, "freq":0.0},
                                                     "G":{"count":0, "freq":0.0},
                                                     "T":{"count":0, "freq":0.0}}
                             self.snpdict[pos][refnuc]["freq"] = 1.0     # Reference frequency has to be computed by subtracting ALT frequency/ies from 1.0
                             self.refdict[pos] = refnuc
-                                
+
                         infowords = words[7].split(";")
                         countstr = infowords[2].replace("DP4=", "")
                         countwords = countstr.split(",")
@@ -3762,7 +3772,7 @@ class vcf(object):
                         self.snpdict[pos][refnuc]["count"] = nref       # Note: if pos is repeated, then ref count is given again, so no harm done here
                         self.snpdict[pos][altnuc]["count"] = nalt       # Each alternative nuc is only mentioned on one line, so again no need to check previous value
 
-                        falt = float(infowords[0].replace("AF=", ""))                            
+                        falt = float(infowords[0].replace("AF=", ""))
                         self.snpdict[pos][altnuc]["freq"] = falt
                         self.snpdict[pos][refnuc]["freq"] -= falt
         return self
@@ -3787,14 +3797,14 @@ class vcf(object):
                     words = line.split()
                     pos = int(words[0])
                     self.snpdict[pos] = {"A":int(words[1]), "C":int(words[2]), "G":int(words[3]), "T":int(words[4])}
-                    
+
         return self
 
     #######################################################################################
 
     def addrefseq(self, seq):
         # Adding reference sequence allows object to return snpvectors also for constant sites
-        # All counts are then set to REF nuc, and count is set to minimum value observed 
+        # All counts are then set to REF nuc, and count is set to minimum value observed
         countlist = []
         for pos in self.snpposlist():
             countlist.append(sum(self.snpvector(pos, ascounts=True)))
@@ -3825,7 +3835,7 @@ class vcf(object):
             return fakevec
         else:
             raise SeqError("The VCF file contains no information about position {}".format(pos))
-    
+
     #######################################################################################
 
     def snpvectorlist(self, poslist, ascounts=False):
@@ -3835,16 +3845,16 @@ class vcf(object):
         for pos in poslist:
             countarray.append(self.snpvector(pos, ascounts))
         return(countarray)
-    
-    #######################################################################################    
-    
+
+    #######################################################################################
+
     def snpposlist(self):
         if not self.snpposcache:
             snpposlist = list(self.snpdict.keys())
             snpposlist.sort()
-            self.snpposcache = snpposlist     
+            self.snpposcache = snpposlist
         return self.snpposcache
-    
+
     #######################################################################################
 
     def consensus(self, pos):
@@ -3854,7 +3864,7 @@ class vcf(object):
                 maxfreq = self.snpdict[pos][nuc]["freq"]
                 connuc = nuc
         return(connuc)
-    
+
     #######################################################################################
 
     def maf(self, pos):
@@ -3863,7 +3873,7 @@ class vcf(object):
         majorfreq = self.snpdict[pos][refnuc]["freq"]
         maf = 1.0 - majorfreq
         return(maf)
-    
+
     #######################################################################################
 
     def nucs(self, pos):
@@ -3872,12 +3882,12 @@ class vcf(object):
             if self.snpdict[pos][nuc]["freq"] > 0:
                 nucset.add(nuc)
         return(nucset)
-        
+
     #######################################################################################
 
     def vcftxt(self, poslist=None, ascounts=False):
         # Returns string ready for printing of summary of nucleotide frequencies (or counts) for requested positions
-        # Format (tab delimited): 
+        # Format (tab delimited):
         #   #   POS     A           C           G           T
         #       23      0.0413      0           0           0.9587
         #
@@ -3885,7 +3895,7 @@ class vcf(object):
         #
         #   #   POS     A           C           G           T
         #       23      230         0           0           5342
-        
+
         outstringlist = ["{}\t{}\t{}\t{}\t{}\n".format("POS", "A", "C", "G", "T")]
         # If no specific positions are requested: return info for variable sites in VCF
         if not poslist:
@@ -3894,7 +3904,7 @@ class vcf(object):
             a, c, g, t = self.snpvector(pos, ascounts)
             outstringlist.append("{}\t{}\t{}\t{}\t{}\n".format(pos, a, c, g, t))
         outstring = "".join(outstringlist)
-        return(outstring)  
+        return(outstring)
 
 #############################################################################################
 #############################################################################################
@@ -3909,7 +3919,7 @@ class vcf(object):
     #     seqfile = Fastafilehandle("/Users/gorm/Documents/python/example_data/ATS.aligned.fasta",seqtype="protein")
     #     seqs = seqfile.read_alignment()
     #     phy = seqs.phylip()
-##    
+##
 ##    for i in range(1):
     # dmat = seqs.distmatrix("pdist_ignoregaps")
     # print dmat
@@ -3928,10 +3938,10 @@ class vcf(object):
     # for ali in range(1,61):
     #     print(ali, seqs.alignpos2seqpos("ATS_D1_ITseq19", ali, False))
     # print("#######")
-    # 
+    #
     # for seqi in range(1,48):
     #     print(seqi, seqs.seqpos2alignpos("ATS_D1_ITseq19", seqi, False))
-    #     
+    #
 
    # print seqs.distmatrix()
 ##
@@ -3972,7 +3982,7 @@ class vcf(object):
 #    print "Time used: %.2f" % tim
 
 # if __name__ == "__main__":
-    
+
     # main()
 
     # import cProfile
