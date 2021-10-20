@@ -257,7 +257,7 @@ class Sequence(object):
 
     #######################################################################################
 
-    def windows(self, wsize, rename=False):
+    def windows(self, wsize, stepsize=1, rename=False):
         """Returns window iterator object"""
 
         # Function that returns window iterator object, which can be used to iterate over windows on sequence
@@ -268,9 +268,10 @@ class Sequence(object):
         class Window_iterator:
             """Window iterator object"""
 
-            def __init__(self, parent, wsize, rename):
+            def __init__(self, parent, wsize, stepsize, rename):
                 self.i = 0
                 self.wsize = wsize
+                self.stepsize = stepsize
                 self.length = len(parent)
                 self.parent = parent
                 self.rename = rename
@@ -282,12 +283,12 @@ class Sequence(object):
                 if self.i + self.wsize <= self.length:
                     start = self.i
                     stop = start + self.wsize
-                    self.i += 1
+                    self.i += self.stepsize
                     return self.parent.subseq(start, stop, rename=self.rename)
                 else:
                     raise StopIteration
 
-        return Window_iterator(self, wsize, rename)
+        return Window_iterator(self, wsize, stepsize, rename)    # "self" points to enclosing Sequence object ("parent")
 
     #######################################################################################
 
