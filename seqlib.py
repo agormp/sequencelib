@@ -404,6 +404,21 @@ class Sequence(object):
 
     #######################################################################################
 
+    def sparse_encode(self):
+        """Returns sparse ("one hot") encoded version of sequence as nparray"""
+
+        # This should be sequence agnostic and just use the .alphabet attribute for building
+        # the transdict
+
+        sparse_list = []
+        transdict = {"A":(1,0,0,0), "C":(0,1,0,0), "G":(0,0,1,0), "T":(0,0,0,1), "X":(0,0,0,0)}
+        for nuc in self.seq:
+            sparse_list.extend(transdict[nuc])
+        sparse_seq = np.array(sparse_list)
+        return sparse_seq
+
+    #######################################################################################
+
     def composition(self):
         """Returns dictionary with composition for single seq. letter:[count,freq]"""
 
