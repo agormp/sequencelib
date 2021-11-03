@@ -99,6 +99,42 @@ def remove_comments(text, leftdelim, rightdelim=None):
         processed_text += text[prevpos:]
     return processed_text
 
+##############################################################################################################
+
+def make_sparseencoder(alphabet, padding="X"):
+    """Returns function that can sparse-encode strings in specified alphabet"""
+
+    # This function uses a "closure" to create and return a function that can later be used
+    # for sparse-encoding strings in the specified alphabet.
+    # The purpose is to avoid having to build the translation dictionary every time the
+    # encoder function is run (or alternatively to compute it preemptively on module import)
+
+    # Check that padding symbol is not also present in alphabet
+    if padding in alphabet:
+        raise SeqError("Sparse-encoding error: padding symbol can't also be present in alphabet")
+
+    # Build translation dictionary for specified alphabet.
+    # This will be available to enclosed (and returned) function
+    alphabet = sorted(alphabet)
+    zerolist = [0] * len(alphabet)
+    transdict = {}
+    for i,residue in enumerate(alphabet):
+        vec = zerolist[:]
+        vec[i] = 1
+        transdict[residue] = vec
+    transdict[padding] = zerolist[:]
+
+    # Enclosed function that will be returned and that can do sparse-encoding of input string
+    def sparse_encoder(sequence_string):
+        """Sparse-encodes input string. Padding is encoded as all zeroes"""
+        sparse_list = []
+        for residue in sequence_string:
+            sparse_list.extend(transdict[residue])
+        sparse_seq = np.array(sparse_list)
+        return sparse_seq
+
+    return sparse_encoder   # Closure: return pointer to function that knows about transdict
+
 #############################################################################################
 #############################################################################################
 
@@ -126,33 +162,6 @@ class Const(object):
     Protein_minambig = set("ACDEFGHIKLMNPQRSTVWYX")
     Protein_maxambig = set("ACDEFGHIKLMNPQRSTVWYBZX")
     ASCII = set(string.ascii_uppercase + string.digits + " ,._")
-
-    # Hardwired dictionaries for sparseencoding nucleotides or amino acids.
-    # Keys are residues (as strings), values are lists of 0 and 1, same length as alphabet
-    # These dictionaries are used by the sparse_encode function to encode entire sequences
-    # Code below builds dicts where the standard alphabet (no ambiguity symbols!) is
-    # encoded in alphabetical order:
-    # e.g. "A": [1,0,0,0], "C":[0,1,0,0], "G": [0,0,1,0], "T":[0,0,0,1]
-    # Unknown residues ("X") are encoded as all zeroes: "X": [0,0,0,0]
-    # Python note: perhaps a bit messy to not have this in sparse_encode function,
-    # but performance is better when not having to build dict every time function is run
-    alphabet = sorted(list(DNA))
-    zerolist = [0] * len(alphabet)
-    DNA_transdict = {}
-    for i,residue in enumerate(alphabet):
-        vec = zerolist[:]
-        vec[i] = 1
-        DNA_transdict[residue] = vec
-    DNA_transdict["X"] = zerolist[:]
-
-    alphabet = sorted(list(Protein))
-    zerolist = [0] * len(alphabet)
-    Protein_transdict = {}
-    for i,residue in enumerate(alphabet):
-        vec = zerolist[:]
-        vec[i] = 1
-        Protein_transdict[residue] = vec
-    Protein_transdict["X"] = zerolist[:]
 
 #############################################################################################
 #############################################################################################
@@ -429,23 +438,6 @@ class Sequence(object):
                 diffs += 1
 
         return float(diffs)/len(self.seq)
-
-    #######################################################################################
-
-    def sparse_encode(self):
-        """Returns sparse ("one hot") encoded version of sequence as nparray"""
-
-        if self.seqtype == "DNA":
-            transdict = Const.DNA_transdict
-        elif self.seqtype == "Protein":
-            transdict = Const.Protein_transdict
-
-        sparse_list = []
-        for residue in self.seq:
-            sparse_list.extend(transdict[residue])
-        sparse_seq = np.array(sparse_list)
-        return sparse_seq
-        return "JEPPER"
 
     #######################################################################################
 
