@@ -117,6 +117,7 @@ class SeqError(Exception):
 class Const(object):
     """Global constants used by seqlib"""
 
+    # Alphabets
     DNA = set("ACGT")
     DNA_minambig = set("ACGTN")
     DNA_typicalambig = set("ACGTYRN")
@@ -125,6 +126,33 @@ class Const(object):
     Protein_minambig = set("ACDEFGHIKLMNPQRSTVWYX")
     Protein_maxambig = set("ACDEFGHIKLMNPQRSTVWYBZX")
     ASCII = set(string.ascii_uppercase + string.digits + " ,._")
+
+    # Hardwired dictionaries for sparseencoding nucleotides or amino acids.
+    # Keys are residues (as strings), values are lists of 0 and 1, same length as alphabet
+    # These dictionaries are used by the sparse_encode function to encode entire sequences
+    # Code below builds dicts where the standard alphabet (no ambiguity symbols!) is
+    # encoded in alphabetical order:
+    # e.g. "A": [1,0,0,0], "C":[0,1,0,0], "G": [0,0,1,0], "T":[0,0,0,1]
+    # Unknown residues ("X") are encoded as all zeroes: "X": [0,0,0,0]
+    # Python note: perhaps a bit messy to not have this in sparse_encode function,
+    # but performance is better when not having to build dict every time function is run
+    alphabet = sorted(list(DNA))
+    zerolist = [0] * len(alphabet)
+    DNA_transdict = {}
+    for i,residue in enumerate(alphabet):
+        vec = zerolist[:]
+        vec[i] = 1
+        DNA_transdict[residue] = vec
+    DNA_transdict["X"] = zerolist[:]
+
+    alphabet = sorted(list(Protein))
+    zerolist = [0] * len(alphabet)
+    Protein_transdict = {}
+    for i,residue in enumerate(alphabet):
+        vec = zerolist[:]
+        vec[i] = 1
+        Protein_transdict[residue] = vec
+    Protein_transdict["X"] = zerolist[:]
 
 #############################################################################################
 #############################################################################################
@@ -407,15 +435,17 @@ class Sequence(object):
     def sparse_encode(self):
         """Returns sparse ("one hot") encoded version of sequence as nparray"""
 
-        # This should be sequence agnostic and just use the .alphabet attribute for building
-        # the transdict
+        if self.seqtype == "DNA":
+            transdict = Const.DNA_transdict
+        elif self.seqtype == "Protein":
+            transdict = Const.Protein_transdict
 
         sparse_list = []
-        transdict = {"A":(1,0,0,0), "C":(0,1,0,0), "G":(0,0,1,0), "T":(0,0,0,1), "X":(0,0,0,0)}
-        for nuc in self.seq:
-            sparse_list.extend(transdict[nuc])
+        for residue in self.seq:
+            sparse_list.extend(transdict[residue])
         sparse_seq = np.array(sparse_list)
         return sparse_seq
+        return "JEPPER"
 
     #######################################################################################
 
@@ -584,16 +614,6 @@ class DNA_sequence(Sequence):
             protseqlist.append(aa)
         protseq = "".join(protseqlist)
         return Protein_sequence(self.name, protseq)
-
-    #######################################################################################
-
-    def sparse_encode(self):
-        """Converts sequence to a list of integers, useful for rapid alignment"""
-
-        trans_dict = {'A':0, 'C':1, 'G':2, 'T':3}
-        intlist = [(trans_dict[letter]) for letter in self.seq]
-        return intlist
-
 
 #############################################################################################
 #############################################################################################
