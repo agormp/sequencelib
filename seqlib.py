@@ -2631,6 +2631,39 @@ class Distmatrix(object):
     #######################################################################################
 
     @classmethod
+    def from_phylip_stringlist(cls, dmat_list):
+        """Constructs Distmatrix object from list of strings corresponding to the lines of a PHYLIP square distance matrix"""
+
+        # Format should be similar to below:
+        # Python note: I am assuming format is correct. Should probably test
+        # ['8    ',
+        #  'DRB3_0101  0.000 0.210 0.440 0.285 0.724 0.836 0.775 0.532',
+        #  'DRB3_0201  0.210 0.000 0.314 0.120 0.492 0.634 0.703 0.325',
+        #  'DRB3_0301  0.440 0.314 0.000 0.206 0.517 0.566 0.649 0.614',
+        #  'DRB3_03021 0.285 0.120 0.206 0.000 0.486 0.612 0.613 0.334',
+        #  'DRB3_0501  0.724 0.492 0.517 0.486 0.000 0.106 0.717 0.546',
+        #  'DRB3_0504  0.836 0.634 0.566 0.612 0.106 0.000 0.740 0.686',
+        #  'DRB3_0701  0.775 0.703 0.649 0.613 0.717 0.740 0.000 0.582',
+        #  'DRB3_0801  0.532 0.325 0.614 0.334 0.546 0.686 0.582 0.000']
+
+        self = cls()
+
+        # Construct list of names, and 2D list of values
+        names = []
+        values = []
+        for line in dmat_list[1:]:
+            words = line.split()
+            names.append(words[0])
+            values.append(words[1:])
+
+        for i,j in itertools.combinations(range(len(names)), 2):
+            self.setdist(names[i], names[j], float(values[i][j]))
+
+        return self
+
+    #######################################################################################
+
+    @classmethod
     def from_similarityfile(cls, filename, maxdist=1.0):
         """Constructor 2: Reads file containing list of pairwise similarities and constructs Distmatrix object"""
 
