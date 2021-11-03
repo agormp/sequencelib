@@ -99,6 +99,42 @@ def remove_comments(text, leftdelim, rightdelim=None):
         processed_text += text[prevpos:]
     return processed_text
 
+##############################################################################################################
+
+def make_sparseencoder(alphabet, padding="X"):
+    """Returns function that can sparse-encode strings in specified alphabet"""
+
+    # This function uses a "closure" to create and return a function that can later be used
+    # for sparse-encoding strings in the specified alphabet.
+    # The purpose is to avoid having to build the translation dictionary every time the
+    # encoder function is run (or alternatively to compute it preemptively on module import)
+
+    # Check that padding symbol is not also present in alphabet
+    if padding in alphabet:
+        raise SeqError("Sparse-encoding error: padding symbol can't also be present in alphabet")
+
+    # Build translation dictionary for specified alphabet.
+    # This will be available to enclosed (and returned) function
+    alphabet = sorted(alphabet)
+    zerolist = [0] * len(alphabet)
+    transdict = {}
+    for i,residue in enumerate(alphabet):
+        vec = zerolist[:]
+        vec[i] = 1
+        transdict[residue] = vec
+    transdict[padding] = zerolist[:]
+
+    # Enclosed function that will be returned and that can do sparse-encoding of input string
+    def sparse_encoder(sequence_string):
+        """Sparse-encodes input string. Padding is encoded as all zeroes"""
+        sparse_list = []
+        for residue in sequence_string:
+            sparse_list.extend(transdict[residue])
+        sparse_seq = np.array(sparse_list)
+        return sparse_seq
+
+    return sparse_encoder   # Closure: return pointer to function that knows about transdict
+
 #############################################################################################
 #############################################################################################
 
@@ -117,6 +153,7 @@ class SeqError(Exception):
 class Const(object):
     """Global constants used by seqlib"""
 
+    # Alphabets
     DNA = set("ACGT")
     DNA_minambig = set("ACGTN")
     DNA_typicalambig = set("ACGTYRN")
@@ -569,16 +606,6 @@ class DNA_sequence(Sequence):
             protseqlist.append(aa)
         protseq = "".join(protseqlist)
         return Protein_sequence(self.name, protseq)
-
-    #######################################################################################
-
-    def sparse_encode(self):
-        """Converts sequence to a list of integers, useful for rapid alignment"""
-
-        trans_dict = {'A':0, 'C':1, 'G':2, 'T':3}
-        intlist = [(trans_dict[letter]) for letter in self.seq]
-        return intlist
-
 
 #############################################################################################
 #############################################################################################
