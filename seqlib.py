@@ -2834,7 +2834,6 @@ class Distmatrix(object):
 
         # Clean up list of sorted distances: remove entries with node1 or node2
         self.sorted[:] = [(dist, nameset) for (dist, nameset) in self.sorted if (node1 not in nameset and node2 not in nameset)]
-        print("#### Removing {} and {}\n".format(node1, node2), self.sorted) #DEBUG
 
         # For each node in distmat (except newnode itself): compute distance between node and newnode, add to distmat and sortedlist
         # Distance is found by averaging distances between the sets of cluster components in node and newnode respectively
