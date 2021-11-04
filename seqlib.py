@@ -2844,10 +2844,10 @@ class Distmatrix(object):
             sumdist = 0.0
             for leaf1 in oldnodeleafs:
                 for leaf2 in newnodeleafs:
-                    sumdist += self.dmat[frozenset({node1, node2})]
+                    sumdist += self.dmat[frozenset({leaf1, leaf2})]
             avdist = sumdist / (len(oldnodeleafs) * len(newnodeleafs))
-            self.dmat[frozenset({node1, node2})] = avdist
-            self.sorted.append((avdist, frozenset({node1, node2})))
+            self.dmat[frozenset({newnode, oldnode})] = avdist
+            self.sorted.append((avdist, frozenset({newnode, oldnode})))
         self.sorted.sort()
 
     #######################################################################################
