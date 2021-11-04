@@ -2623,7 +2623,7 @@ class Distmatrix(object):
     def __init__(self, distmat=None):
         self.dmat = {}
         self.names = set()
-        self.sorted = []  # List of (dist, name-pair) tuples, sorted on dists
+        self.sorted = []  # List of (dist, name-pair-frozenset) tuples, sorted on dists
         self.clusterdict = {}
 
     # NOTE: write constructor that will accept practically any form of distance matrix input
@@ -2738,8 +2738,7 @@ class Distmatrix(object):
 
     def setdist(self, name1, name2, dist):
         """Sets distance between sequences with names name1 and name2"""
-        self.dmat[(name1,name2)] = float(dist)
-        self.dmat[(name2,name1)] = float(dist)
+        self.dmat[frozenset({name1,name2})] = float(dist)
         self.names.add(name1)
         self.names.add(name2)
 
@@ -2750,7 +2749,7 @@ class Distmatrix(object):
 
         # If value not in dictionary: return 0.0 (especially relevant for diagonal entries)
         try:
-            return self.dmat[(name1,name2)]
+            return self.dmat[frozenset({name1,name2})]
         except KeyError:
             return 0.0
 
@@ -2795,16 +2794,16 @@ class Distmatrix(object):
     #######################################################################################
 
     def sortdists(self):
-        """Creates sorted list of (dist, (name1, name2)) tuples, sorted on dists"""
+        """Creates sorted list of (dist, frozenset({name1,name2})) tuples, sorted on dists"""
         self.sorted = []
         for name1, name2 in itertools.combinations(self.getnames(), 2):
-            self.sorted.append((self.dmat[(name1,name2)], (name1, name2)))
+            self.sorted.append((self.dmat[frozenset({name1,name2})], frozenset({name1,name2})))
         self.sorted.sort()
 
     #######################################################################################
 
     def nearest(self):
-        """Returns tuple of (dist, (name1, name2)) for the nearest names in distmatrix"""
+        """Returns tuple of (dist, frozenset({name1,name2})) for the nearest names in distmatrix"""
         try:
             return self.sorted[0]
         except(IndexError):
@@ -2834,7 +2833,8 @@ class Distmatrix(object):
         self.names.remove(node2)
 
         # Clean up list of sorted distances: remove entries with node1 or node2
-        self.sorted[:] = [(dist, nametup) for (dist, nametup) in self.sorted if (node1 not in nametup and node2 not in nametup)]
+        self.sorted[:] = [(dist, nameset) for (dist, nameset) in self.sorted if (node1 not in nameset and node2 not in nameset)]
+        print("#### Removing {} and {}\n".format(node1, node2), self.sorted) #DEBUG
 
         # For each node in distmat (except newnode itself): compute distance between node and newnode, add to distmat and sortedlist
         # Distance is found by averaging distances between the sets of cluster components in node and newnode respectively
@@ -2844,11 +2844,10 @@ class Distmatrix(object):
             sumdist = 0.0
             for leaf1 in oldnodeleafs:
                 for leaf2 in newnodeleafs:
-                    sumdist += self.dmat[(leaf1, leaf2)]
+                    sumdist += self.dmat[frozenset({node1, node2})]
             avdist = sumdist / (len(oldnodeleafs) * len(newnodeleafs))
-            self.dmat[(newnode, oldnode)] = avdist
-            self.dmat[(oldnode, newnode)] = avdist
-            self.sorted.append((avdist, (oldnode, newnode)))
+            self.dmat[frozenset({node1, node2})] = avdist
+            self.sorted.append((avdist, frozenset({node1, node2})))
         self.sorted.sort()
 
     #######################################################################################
