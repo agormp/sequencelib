@@ -102,7 +102,7 @@ def remove_comments(text, leftdelim, rightdelim=None):
 ##############################################################################################################
 
 def make_sparseencoder(alphabet, padding="X"):
-    """Returns function that can sparse-encode strings in specified alphabet"""
+    """Returns function (closure) that can sparse-encode strings in specified alphabet"""
 
     # This function uses a "closure" to create and return a function that can later be used
     # for sparse-encoding strings in the specified alphabet.
@@ -2815,6 +2815,7 @@ class Distmatrix(object):
 
     def merge_nodes(self, node1, node2, newnode=None):
         """Merges the named nodes into one. Updates distmatrix so dists involving clusters are averaged over all component dists"""
+        print(self.sorted) #DEBUG
 
         # First time: initialize clusterdict so each seqname points to set containing itself (each seq is its own cluster)
         if not self.clusterdict:
@@ -2823,6 +2824,8 @@ class Distmatrix(object):
         # Construct suitable name for new cluster if one was not provided
         if not newnode:
             newnode = "%s_%s" % (node1, node2)
+            print("### New node name made in if not clause: {}".format(newnode))  #DEBUG
+        print("### New node name from function call: {}".format(newnode))          #DEBUG
 
         # Add newnode to clusterdict, and set it to point to intersection of what node1 and node2 points to
         # (NB: node1 and/or node2 may either be simple nodes, pointing to themselves, or merged nodes pointing to sets of nodes)
@@ -2849,6 +2852,7 @@ class Distmatrix(object):
             self.dmat[(newnode, oldnode)] = avdist
             self.dmat[(oldnode, newnode)] = avdist
             self.sorted.append((avdist, (oldnode, newnode)))
+        print(self.sorted) #DEBUG
         self.sorted.sort()
 
     #######################################################################################
