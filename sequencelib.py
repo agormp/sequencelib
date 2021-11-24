@@ -1,6 +1,6 @@
 # By Anders Gorm Pedersen, agpe@dtu.dk, Technical University of Denmark, Bioinformatics, 2012-2021
 
-"""Classes and methods for storing and manipulating DNA and protein sequences - version 2.5"""
+"""Classes and methods for reading, analyzing, manipulating, and writing DNA and protein sequences"""
 
 from math import ceil
 from math import floor
