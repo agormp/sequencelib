@@ -1,3 +1,5 @@
 __pycache__
-*.ipynb*
+*ipynb*
 notes/
+sequencelib.egg-info/
+dist/
