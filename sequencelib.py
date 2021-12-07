@@ -1827,28 +1827,58 @@ class Seq_alignment(Sequences_base):
 
     #######################################################################################
 
-    def distmatrix(self, dist="pdist"):
-        """Returns distance matrix object, containing all pairwise sequence distances"""
+    def distdict(self, dist="pdist"):
+        """Returns nested dict of pairwise sequence distances: distdict[name1][name2] = dist"""
 
         # Decide which method to use for computing distance
-        if dist == "hamming":
-            distmethod = Sequence.hamming
-        elif dist == "pdist":
-            distmethod = Sequence.pdist
-        elif dist == "hamming_ignoregaps":
-            distmethod = Sequence.hamming_ignoregaps
-        elif dist == "pdist_ignoregaps":
-            distmethod = Sequence.pdist_ignoregaps
-        else:
+        methoddict = {"hamming":Sequence.hamming,
+                      "pdist":Sequence.pdist,
+                      "hamming_ignoregaps":Sequence.hamming_ignoregaps,
+                      "pdist_ignoregaps":Sequence.pdist_ignoregaps}
+        try:
+            distmethod = methoddict[dist]
+        except KeyError:
             raise SeqError("Unknown distance measure: %s" % dist)
 
-        # Compute dists, construct distance matrix
-        distmat = Distmatrix()
-        for s1, s2 in itertools.combinations(self, 2):
-            dist = distmethod(s1,s2)
-            distmat.setdist(s1.name, s2.name, dist)
+        # Initialize empty nested 2D dictionary with sequence names as keys.
+        distdict = dict.fromkeys(self.seqnamelist)
+        for name in self.seqnamelist:
+            distdict[name] = dict.fromkeys(self.seqnamelist)
 
-        return distmat
+        # Fill dictionary with values
+        for seq1, seq2 in itertools.combinations(self, 2):
+            dist = distmethod(seq1,seq2)
+            distdict[seq1.name][seq2.name] = dist
+            distdict[seq2.name][seq1.name] = dist
+
+        return distdict
+
+    #######################################################################################
+
+    def sequence_diversity(self):
+        """Returns mean, and standard error of the mean for pairwise sequence diversity as tuple: (mean, sem)"""
+
+        # Note: std should perhaps be computed according to Nei, Molecular Evolutionary Genetics, equation 10.7?
+        # Here std is computed using Welfords 1962 single-pass algorithm
+        # Correlations among pairwise distances are ignored
+        mean_prev = var_prev = num_vals = 0.0
+        namelist = list(self.names)
+        nseqs = len(namelist)
+
+        # Online (single-pass) computation of mean and variance
+        for s1, s2 in itertools.combinations(self, 2):
+            num_vals += 1.0
+            dist = s1.pdist(s2)
+            diff = dist - mean_prev
+            mean_cur = mean_prev + diff / num_vals
+            var_cur = var_prev + diff * (dist - mean_cur)
+            mean_prev = mean_cur
+            var_prev = var_cur
+
+        # NOTE: need to doublecheck this:
+        variance = var_cur / (num_vals)
+        sem = sqrt(variance) / sqrt(num_vals)
+        return (mean_cur, sem)
 
     #######################################################################################
 
