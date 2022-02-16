@@ -405,7 +405,7 @@ class Sequence(object):
 
         diffs = 0
         for (c1, c2) in zip(self.seq, other.seq):
-            if (c1 != c2) and (c1 != "-") and (c2 != "-"):
+            if all([c1!=c2, c1!="-", c2!= "-"]):
                 diffs += 1
 
         return diffs
@@ -432,7 +432,7 @@ class Sequence(object):
 
         diffs = 0
         for (c1, c2) in zip(self.seq, other.seq):
-            if (c1 != c2) and (c1 != "-") and (c2 != "-"):
+            if all([c1!=c2, c1!="-", c2!= "-"]):
                 diffs += 1
 
         return float(diffs)/len(self.seq)
@@ -1855,20 +1855,27 @@ class Seq_alignment(Sequences_base):
 
     #######################################################################################
 
-    def sequence_diversity(self):
-        """Returns mean, and standard error of the mean for pairwise sequence diversity as tuple: (mean, sem)"""
-
+    def sequence_diversity(self, ignoregaps=True):
+        """
+        Compute pairwise sequence diversity (pi).
+        Return mean, and standard error of the mean, as tuple: (mean, sem)
+        Discard pairwise gappy positions if requested.
+        """
         # Note: std should perhaps be computed according to Nei, Molecular Evolutionary Genetics, equation 10.7?
         # Here std is computed using Welfords 1962 single-pass algorithm
         # Correlations among pairwise distances are ignored
         mean_prev = var_prev = num_vals = 0.0
-        namelist = list(self.names)
-        nseqs = len(namelist)
+        nseqs = len(self)
+
+        if ignoregaps:
+            distmethod = Sequence.pdist_ignoregaps
+        else:
+            distmethod = Sequence.pdist
 
         # Online (single-pass) computation of mean and variance
         for s1, s2 in itertools.combinations(self, 2):
             num_vals += 1.0
-            dist = s1.pdist(s2)
+            dist = distmethod(s1, s2)
             diff = dist - mean_prev
             mean_cur = mean_prev + diff / num_vals
             var_cur = var_prev + diff * (dist - mean_cur)
@@ -2221,7 +2228,7 @@ class Seq_alignment(Sequences_base):
             block.append("%s" % name)
             block.append(", ")
             # print 4 names per line
-            if (i > 0) and (i < numpartitions - 1) and (i % 4 == 0):
+            if all([i%4==0, i>0, i<numpartitions - 1])
                 block.append("\n        ")
         del block[-1]               # Added one comma too many
         block.append(";\n")
@@ -2268,7 +2275,7 @@ class Seq_alignment(Sequences_base):
             block.append("%s" % name)
             block.append(", ")
             # print 10 names per line
-            if (i > 0) and (i < numpartitions - 1) and (i % 10 == 0):
+            if all([i%10==0, i>0, i<numpartitions - 1]):
                 block.append("\n        ")
         del block[-1]               # Added one comma too many
         block.append(";\n")
@@ -2362,7 +2369,7 @@ class Seq_alignment(Sequences_base):
             bestblock.append("%s" % name)
             bestblock.append(", ")
             # print 10 names per line
-            if (i > 0) and (i < numpartitions - 1) and (i % 10 == 0):
+            if all([i%10==0, i>0, i<numpartitions - 1]):
                 bestblock.append("\n        ")
         del bestblock[-1]               # Added one comma too many
         bestblock.append(";\n")
@@ -2504,7 +2511,7 @@ class Seq_alignment(Sequences_base):
             bestblock.append("%s" % name)
             bestblock.append(", ")
             # print 10 names per line
-            if (i > 0) and (i < numpartitions - 1) and (i % 10 == 0):
+            if all([i%10==0, i>0, i<numpartitions - 1]):
                 bestblock.append("\n        ")
         del bestblock[-1]               # Added one comma too many
         bestblock.append(";\n")
