@@ -2228,7 +2228,7 @@ class Seq_alignment(Sequences_base):
             block.append("%s" % name)
             block.append(", ")
             # print 4 names per line
-            if all([i%4==0, i>0, i<numpartitions - 1])
+            if all([i%4==0, i>0, i<numpartitions - 1]):
                 block.append("\n        ")
         del block[-1]               # Added one comma too many
         block.append(";\n")
