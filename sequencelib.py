@@ -1613,6 +1613,23 @@ class Seq_alignment(Sequences_base):
 
     #######################################################################################
 
+    def rem_hmmalign_insertcol(self):
+        """For alignments created by HMMer:hmmalign: Removes insert state columns"""
+
+        # In alignments from HMMer's hmmalign: insert states have lower case residues
+        # and/or "." for gaps (not really gaps - just lack of insert in other seq).
+
+        insert_state_symbols = set("." + string.ascii_lowercase)    # All ASCII overkill...
+        discardlist = []
+        for i,col in enumerate(self.columns()):
+            columnset = set(col)
+            if insert_state_symbols & columnset:
+                discardlist.append(i)
+
+        self.remcols(discardlist)
+
+    #######################################################################################
+
     def align_seq_pos_cache_builder(self, seqname):
         """Helper function for seqpos2alignpos and alignpos2seqpos: Builds mapping caches for given seq"""
 
@@ -3187,11 +3204,12 @@ class Alignfile_reader(object):
 
     #######################################################################################
 
-    def makeseq(self, name, seq, annotation="", comments=""):
+    def makeseq(self, name, seq, annotation="", comments="", toupper=True):
         """Takes name, sequence, annotation, and comments, returns sequence object of correct type"""
 
-        # Convert to upper case
-        seq = seq.upper()
+        # Convert to upper case if requested
+        if toupper:
+            seq = seq.upper()
 
         # Determine seqtype.
 
@@ -3358,56 +3376,6 @@ class Phylipfilehandle(Alignfile_reader):
 
         return alignment
 
-    # #######################################################################################
-    #
-    # def read_alignment(self, silently_discard_dup_name=False):
-    #     """Reads all sequences, returns them as Seq_alignment object"""
-    #
-    #     if self.filename == "stdin" or self.filename == "handle":
-    #         name = "Partition"
-    #     else:
-    #         name = os.path.split(self.filename)[1].split(".")[0]    # Discard path and extension from file name
-    #     alignment = Seq_alignment(name)
-    #
-    #     # Line no. 0 contains Phylip header. Extract number of sequences (ignore alignment length)
-    #     words = self.seqdata[0].split()
-    #     nseqs = int(words[0])
-    #     seqlist = [[] for i in range(nseqs)]
-    #
-    #     # Read first block of phylip alignment, add name and first seqblock to list for each seq.
-    #     for i in range(1, nseqs + 1):
-    #         line = self.seqdata[i]
-    #         words = line.split()
-    #         name = words[0]
-    #         seq = "".join(words[1:])
-    #         seqletters = set(seq)
-    #         if seqletters <= set(["0","1","\n"]):   # Only 0 and 1: this is gapencoding => do NOT remove numbers!!!
-    #             seq = seq.translate(self.spacetrans)            # Remove whitespace
-    #         else:
-    #             seq = seq.translate(self.alltrans)              # Remove whitespace and numbering
-    #         seqlist[i-1] = [name, seq]
-    #
-    #     # Read remaining sequence blocks, add seq string to appropriate index in seqlist
-    #     n_remaining_lines = len(self.seqdata) - nseqs - 2
-    #     n_remaining_blocks = (n_remaining_lines + 1) // (nseqs + 1)
-    #
-    #     for blockno in range(1, n_remaining_blocks + 1):
-    #         for i in range(nseqs):
-    #             line = self.seqdata[blockno*(nseqs+1) + 1 + i]
-    #             words = line.split()
-    #             seq = "".join(words)
-    #             seqlist[i].append(seq)
-    #
-    #     # For each entry in sequence dictionary:  Join list of strings to single string,
-    #     # convert to Sequence object of proper type, add Sequence object to alignment object
-    #     for item in seqlist:
-    #         name = item[0]
-    #         seq = "".join(item[1:])
-    #         seqobject = Alignfile_reader.makeseq(self, name, seq)
-    #         alignment.addseq(seqobject, silently_discard_dup_name)
-    #
-    #     return alignment
-    #
 #############################################################################################
 #############################################################################################
 
@@ -3416,7 +3384,6 @@ class Nexusfilehandle(Alignfile_reader):
 
     def __init__(self, filename, seqtype="autodetect", check_alphabet=False, degap=False, nameishandle=False):
         Alignfile_reader.__init__(self, filename, seqtype, check_alphabet, degap, nameishandle)
-
 
         # Perform "magic number" check of whether file appears to be in NEXUS format
         if not self.seqdata[:6].lower() == "#nexus":
@@ -3487,6 +3454,63 @@ class Nexusfilehandle(Alignfile_reader):
 #############################################################################################
 #############################################################################################
 
+class Stockholmfilehandle(Alignfile_reader):
+    """Reader class for STOCKHOLM format alignment files"""
+
+    # NOTE: currently ignores metadata
+
+    def __init__(self, filename, seqtype="autodetect", check_alphabet=False, degap=False, nameishandle=False):
+        Alignfile_reader.__init__(self, filename, seqtype, check_alphabet, degap, nameishandle)
+
+        # Perform "magic number" check of whether file appears to be in STOCKHOLM format
+        if not self.seqdata[:11].lower() == "# stockholm":
+            raise SeqError("File '{}' does not appear to be in STOCKHOLM format".format(self.filename))
+
+        # Split input data into list of lines
+        self.seqdata = self.seqdata.split("\n")
+
+    #######################################################################################
+
+    def read_alignment(self, silently_discard_dup_name=False):
+        """Reads all sequences, returns them as Seq_alignment object"""
+
+        if self.filename == "stdin" or self.filename == "handle":
+            name = "Partition"
+        else:
+            name = os.path.split(self.filename)[1].split(".")[0]    # Discard path and extension from file name
+        alignment = Seq_alignment(name)
+
+        # Meta data is present on lines starting with #. Currently these lines are ignored
+        # Sequence data is written one sequence per line in the format: <name> <seq>
+        # where the separation can be one or more blanks.
+        # Sequence block ends with "//"
+        # Iterate over remaining lines, adding sequences to dictionary as we go
+        seqdict = {}
+        for line in self.seqdata:
+            if not line:
+                pass                                   # Skip blank lines
+            else:
+                words = line.rstrip().split()
+                if words[0].startswith("#"):
+                    pass                               # Skip metadata
+                elif words[0].startswith("//"):
+                    break                              # End loop on //
+                else:
+                    name = words[0]
+                    seq = "".join(words[1:])           # join: in case sequence is divided into blocks
+                    seqdict[name] = seq
+
+        # For each entry in sequence dictionary:  Join list of strings to single string,
+        # convert to Sequence object of proper type, add Sequence object to alignment object
+        for name,seq in seqdict.items():
+            seqobject = Alignfile_reader.makeseq(self, name, seq, toupper=False)
+            alignment.addseq(seqobject, silently_discard_dup_name)
+
+        return alignment
+
+#############################################################################################
+#############################################################################################
+
 class Seqfile(object):
     """Factory for constructing seqfilehandle objects. Type selected based on fileformat string"""
 
@@ -3497,7 +3521,7 @@ class Seqfile(object):
 
         known_handles = {"raw": Rawfilehandle, "tab": Tabfilehandle, "fasta": Fastafilehandle,
                    "nexus": Nexusfilehandle, "phylip": Phylipfilehandle, "clustal": Clustalfilehandle,
-                    "genbank": Genbankfilehandle, "how": Howfilehandle}
+                    "genbank": Genbankfilehandle, "how": Howfilehandle, "stockholm": Stockholmfilehandle}
 
         # Return requested handle if among known formats
         if filetype in known_handles:
@@ -3525,6 +3549,8 @@ class Seqfile(object):
                 filetype = "fasta"
             elif firstline.lower().startswith("#nexus"):
                 filetype = "nexus"
+            elif firstline.lower().startswith("# stockholm"):
+                filetype = "stockholm"
             elif (firstline[0].isspace() and len(firstline.split()) >= 2):
                 filetype = "phylip"
             elif firstline.startswith("CLUSTAL"):
