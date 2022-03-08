@@ -2866,10 +2866,11 @@ class Howfilehandle(Seqfile_reader):
     def __init__(self, filename, seqtype="autodetect", check_alphabet=False, degap=False, nameishandle=False):
         Seqfile_reader.__init__(self, filename, seqtype, check_alphabet, degap, nameishandle)
 
-        # Perform "magic number" check of whether file appears to be in HOW format
+        # Perform minimal "magic number" check of whether file appears to be in HOW format
         line = self.seqfile.readline()
         words = line.split()
-        if not (len(words) >= 2) and (words[0].isdigit) and line[6] == " ":
+        # Note: testing for line[6]!=" " could fail for seqlen>=1E6 (but perhaps not problem)
+        if any([len(words) != 2, not words[0].isdigit(), line[6] != " "]):
             raise SeqError("File '{}' does not appear to be in HOW format".format(self.filename))
 
         # If everything was kosher: move filepointer back to beginning of file
