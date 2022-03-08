@@ -183,8 +183,8 @@ class Sequence(object):
 
         # If requested: use set arithemtic to check whether seq contains any non-alphabet characters
         if check_alphabet:
-            seqset = set(self.seq)                              # Automatically uniquefies chars
-            non_alphabet = seqset - self.alphabet - set("-")    # Also subtract gapchars
+            seqset = set(self.seq.upper())                       # Automatically uniquefies chars
+            non_alphabet = seqset - self.alphabet - set("-.")    # Also subtract gapchars
             if len(non_alphabet)>0:
                 raise SeqError("Unknown symbols in sequence %s: %s" % (name, list(non_alphabet)))
 
@@ -194,6 +194,7 @@ class Sequence(object):
         """Implements equality check between sequences"""
 
         # Note: Here I take two sequences to be identical if they have same gapfree seq (name is ignored)
+
         if self.seq.replace("-", "") == other.seq.replace("-", ""):
             return True
         else:
@@ -205,7 +206,7 @@ class Sequence(object):
         """Implements inequality checking between sequences"""
 
         # Python note: __eq__ does not cover use of != operator, so this has to be explicitly implemented
-        if self.seq != other.seq:
+        if self.seq.replace("-", "") != other.seq.replace("-", ""):
             return True
         else:
             return False
@@ -535,7 +536,7 @@ class Sequence(object):
 class DNA_sequence(Sequence):
     """Class containing one DNA sequence, and corresponding methods"""
 
-    # Implementation note: alphabet should really be set in a more principled manner - not just to minimum ambiguity set
+    # Implementation note: alphabet should really be set in a more principled manner
 
     def __init__(self, name, seq, annotation="", comments="", check_alphabet=False, degap=False):
         self.seqtype="DNA"
@@ -635,6 +636,7 @@ class ASCII_sequence(Sequence):
     def __init__(self, name, seq, annotation="", comments="", check_alphabet=False, degap=False):
         self.seqtype="ASCII"
         self.alphabet = Const.ASCII
+        self.ambigsymbols = set()       # Empty set. Attribute used by some functions. Change?
         Sequence.__init__(self, name, seq, annotation, comments, check_alphabet, degap)
 
     #######################################################################################
@@ -1468,6 +1470,8 @@ class Seq_alignment(Sequences_base):
         Sequences_base.__init__(self, name=name, seqtype=None)
         self.seqpos2alignpos_cache = {}
         self.alignpos2seqpos_cache = {}
+        self.annotation = None              # Annotation of each position
+                                            # Potentially one char per column
 
     #######################################################################################
 
@@ -1525,6 +1529,12 @@ class Seq_alignment(Sequences_base):
         """Discards all columns whose indices are not in keeplist"""
         for seq in self:
             seq.indexfilter(keeplist)
+
+        # If alignment object contains annotation: also apply filter to annotation sequence
+        if self.annotation:
+            s = self.annotation
+            annotlist = [s[i] for i in keeplist]
+            self.annotation = "".join(annotlist)
 
     #######################################################################################
 
@@ -1618,13 +1628,15 @@ class Seq_alignment(Sequences_base):
 
         # In alignments from HMMer's hmmalign: insert states have lower case residues
         # and/or "." for gaps (not really gaps - just lack of insert in other seq).
-
-        insert_state_symbols = set("." + string.ascii_lowercase)    # All ASCII overkill...
+        # Internally I keep track of these using Seq_alignment.annotation field:
+        # "i" = insert state, "m" = match state
         discardlist = []
-        for i,col in enumerate(self.columns()):
-            columnset = set(col)
-            if insert_state_symbols & columnset:
-                discardlist.append(i)
+        if self.annotation:
+            for i,char in enumerate(self.annotation):
+                if char == "i":
+                    discardlist.append(i)
+        else:
+            raise SeqError("This alignment contains no information about hmmalign insert states")
 
         self.remcols(discardlist)
 
@@ -3204,12 +3216,11 @@ class Alignfile_reader(object):
 
     #######################################################################################
 
-    def makeseq(self, name, seq, annotation="", comments="", toupper=True):
+    def makeseq(self, name, seq, annotation="", comments=""):
         """Takes name, sequence, annotation, and comments, returns sequence object of correct type"""
 
-        # Convert to upper case if requested
-        if toupper:
-            seq = seq.upper()
+        # Convert to upper case
+        seq = seq.upper()
 
         # Determine seqtype.
 
@@ -3217,7 +3228,7 @@ class Alignfile_reader(object):
         # Only done for first sequence: after checking, the filehandles seqtype is set to first detected type
         if self.seqtype == "autodetect":
             seqletters = set(seq) - set("-") # automatically uniquefies chars
-            if seqletters <= Const.DNA_minambig:
+            if seqletters <= Const.DNA_typicalambig:
                 self.seqtype = "DNA"
                 return DNA_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
             elif seqletters <= Const.Protein_minambig:
@@ -3474,22 +3485,23 @@ class Stockholmfilehandle(Alignfile_reader):
     def read_alignment(self, silently_discard_dup_name=False):
         """Reads all sequences, returns them as Seq_alignment object"""
 
+        # Meta data is present on lines starting with #. Currently these lines are ignored
+        # Sequence data can be written over several lines (even though original standard
+        # specified one sequence per line I think?), with each line being: <name> <seq>
+        # Sequence block ends with "//"
+
+        # In alignments from HMMer's hmmalign insert states will have lower case residues
+        # and/or "." for gaps (not really gaps - just lack of insert in other seq).
+        # I keep track of these in alignment's annotation field (not seq annotation)
+
         if self.filename == "stdin" or self.filename == "handle":
             name = "Partition"
         else:
             name = os.path.split(self.filename)[1].split(".")[0]    # Discard path and extension from file name
         alignment = Seq_alignment(name)
-
-        # Meta data is present on lines starting with #. Currently these lines are ignored
-        # Sequence data is written one sequence per line in the format: <name> <seq>
-        # where the separation can be one or more blanks.
-        # Sequence block ends with "//"
-        # Iterate over remaining lines, adding sequences to dictionary as we go
         seqdict = {}
         for line in self.seqdata:
-            if not line:
-                pass                                   # Skip blank lines
-            else:
+            if line.strip():                            # If line is not empty:
                 words = line.rstrip().split()
                 if words[0].startswith("#"):
                     pass                               # Skip metadata
@@ -3498,14 +3510,32 @@ class Stockholmfilehandle(Alignfile_reader):
                 else:
                     name = words[0]
                     seq = "".join(words[1:])           # join: in case sequence is divided into blocks
-                    seqdict[name] = seq
+                    if name in seqdict:
+                        seqdict[name].append(seq)
+                    else:
+                        seqdict[name] = [seq]
 
-        # For each entry in sequence dictionary:  Join list of strings to single string,
-        # convert to Sequence object of proper type, add Sequence object to alignment object
+        # For each entry in sequence dictionary: Join list of strings to single string,
+        for name,seqlist in seqdict.items():
+            seq = "".join(seqlist)
+            seqdict[name] = seq
+
+        # Extract information about sites corresponding to insert states
+        annotation = ["m"] * len(seq)
         for name,seq in seqdict.items():
-            seqobject = Alignfile_reader.makeseq(self, name, seq, toupper=False)
+            for i,char in enumerate(seq):
+                if char=="." or char.islower():
+                    annotation[i] = "i"
+        annotation = "".join(annotation)
+
+        # convert to Sequence object of proper type, add Sequence object to alignment object
+        # Note: alignment annotation is added as annotation field to eacg seq. Consider alternatives...
+        for name,seq in seqdict.items():
+            seq = seq.replace(".", "-")         # Replace "." gaps with regular gapsymbols
+            seqobject = Alignfile_reader.makeseq(self, name, seq, annotation=annotation)
             alignment.addseq(seqobject, silently_discard_dup_name)
 
+        alignment.annotation = annotation
         return alignment
 
 #############################################################################################
