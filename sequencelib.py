@@ -401,12 +401,23 @@ class Sequence(object):
         # Note: using this to build distance matrix will mean that for different pairs of sequences
         # a different set of alignment positions are included in the distance measure
 
-        diffs = 0
-        for (c1, c2) in zip(self.seq, other.seq):
-            if all([c1!=c2, c1!="-", c2!= "-"]):
-                diffs += 1
+        def indices(mystring):
+            """Helper function that finds indices of gaps in string. Returns as set"""
+            result = set()
+            offset = -1
+            while True:
+                try:
+                    offset = mystring.index("-", offset+1)
+                except ValueError:
+                    return result
+                result.add(offset)
 
-        return diffs
+        diffs = self.hamming(other)
+        gap_indices_self = indices(self.seq)
+        gap_indices_other = indices(other.seq)
+        n_dont_count = len(gap_indices_self | gap_indices_other)
+
+        return diffs - n_dont_count
 
     #######################################################################################
 
@@ -423,12 +434,7 @@ class Sequence(object):
         # Note: using this to build distance matrix will mean that for different pairs of sequences
         # a different set of alignment positions are included in the distance measure
 
-        diffs = 0
-        for (c1, c2) in zip(self.seq, other.seq):
-            if all([c1!=c2, c1!="-", c2!= "-"]):
-                diffs += 1
-
-        return float(diffs)/len(self.seq)
+        return self.hamming_ignoregaps(other)/len(self.seq)
 
     #######################################################################################
 
