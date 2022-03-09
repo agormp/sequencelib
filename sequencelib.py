@@ -19,6 +19,7 @@ from io import StringIO
 import copy
 import os
 import numpy as np
+import Levenshtein as lv
 
 #############################################################################################
 #############################################################################################
@@ -389,12 +390,8 @@ class Sequence(object):
     def hamming(self, other):
         """Directly observable distance between self and other (absolute count of different positions)"""
 
-        diffs = 0
-        for (c1, c2) in zip(self.seq, other.seq):
-            if (c1 != c2):
-                diffs += 1
-
-        return diffs
+        # Note: completely outsourced to Levenshtein library which is blazing fast!
+        return lv.hamming(self.seq, other.seq)
 
     #######################################################################################
 
@@ -416,12 +413,7 @@ class Sequence(object):
     def pdist(self, other):
         """Directly observable distance between self and other (in differences per site)"""
 
-        diffs = 0
-        for (c1, c2) in zip(self.seq, other.seq):
-            if (c1 != c2):
-                diffs += 1
-
-        return float(diffs)/len(self.seq)
+        return self.hamming(other)/len(self.seq)
 
     #######################################################################################
 
