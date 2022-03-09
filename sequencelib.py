@@ -1882,10 +1882,10 @@ class Seq_alignment(Sequences_base):
 
     #######################################################################################
 
-    def sequence_diversity(self, ignoregaps=True):
+    def sequence_diversity(self, ignoregaps=False):
         """
         Compute pairwise sequence diversity (pi).
-        Return mean, and standard error of the mean, as tuple: (mean, sem)
+        Return mean, and standard deviation, as tuple: (mean, std)
         Discard pairwise gappy positions if requested.
         """
         # Note: std should perhaps be computed according to Nei, Molecular Evolutionary Genetics, equation 10.7?
@@ -1911,8 +1911,8 @@ class Seq_alignment(Sequences_base):
 
         # NOTE: need to doublecheck this:
         variance = var_cur / (num_vals)
-        sem = sqrt(variance) / sqrt(num_vals)
-        return (mean_cur, sem)
+        std = sqrt(variance)
+        return (mean_cur, std)
 
     #######################################################################################
 
