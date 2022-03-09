@@ -8,7 +8,7 @@ from math import sqrt
 from math import log
 from math import log10
 
-import collections
+from collections import Counter
 import re
 import string
 import sys
@@ -438,17 +438,20 @@ class Sequence(object):
 
     #######################################################################################
 
+    def residuecounts(self):
+        """Returns dictionary with counts of residues for single seq. {letter:count}"""
+
+        return Counter(self.seq)
+
+    #######################################################################################
+
     def composition(self):
-        """Returns dictionary with composition for single seq. letter:[count,freq]"""
+        """Returns dictionary with composition for single seq. {letter:freq}"""
 
-        compdict = {}
-        # Note: alphabet does not include gap chars, so only actual letters are counted
-        for letter in self.alphabet:
-            count = self.seq.count(letter)
-            freq = float(count)/len(self.seq)
-            compdict[letter] = [count,freq]
-
-        return compdict
+        countdict = self.residuecounts()
+        length = len(self)
+        freqdict = {res:count/length for res,count in countdict.items()}
+        return freqdict
 
     #######################################################################################
 
@@ -1249,29 +1252,38 @@ class Sequences_base(object):
 
     #######################################################################################
 
-    def composition(self):
-        """Returns dictionary with cumulated composition for set of seqs symbol:[count, freq]"""
+    def residuecounts(self):
+        """Returns dictionary with cumulated counts for set of seqs {symbol:count}"""
 
-        allcomp = {}
-        totlength = 0
-
-        # Collect cumulated counts for all seqs. Note: gaps are not counted
+        allcounts = Counter()
         for seq in self:
-            seqcomp = seq.composition()
-            for letter in seq.alphabet:
-                count = seqcomp[letter][0]
-                totlength += count
-                if letter in allcomp:
-                    allcomp[letter][0] += count
-                else:
-                    allcomp[letter] = seqcomp[letter]
+            allcounts.update(seq)
+        return allcounts
 
-        # Compute freqs
-        for letter in seq.alphabet:
-            freq = float(allcomp[letter][0]) / totlength
-            allcomp[letter][1] = freq
+    #######################################################################################
 
-        return allcomp
+    def composition(self, ignoregaps=True):
+        """Returns dictionary with cumulated counts AND freq for set of seqs {symbol:[count,freq]}"""
+
+        allcounts = self.residuecounts()
+        if ignoregaps:
+            alphabet = set(allcounts.keys()) - set("-")
+        else:
+            alphabet = set(allcounts.keys())
+
+        if self.alignment:
+            totlength = self.alignlen() * len(self)
+        else:
+            totlength = 0
+            for seq in self:
+                totlength += len(seq)
+
+        compdict = {}
+        for residue in alphabet:
+            count = allcounts[residue]
+            freq = count/totlength
+            compdict[residue] = [count, freq]
+        return compdict
 
     #######################################################################################
 
@@ -1441,6 +1453,7 @@ class Seq_set(Sequences_base):
 
     def __init__(self, name=None, seqtype=None, seqlist=None):
         Sequences_base.__init__(self, name=name, seqtype=None)
+        self.alignment = False
         self.seqpos2alignpos_cache = {}
         self.alignpos2seqpos_cache = {}
 
@@ -1466,6 +1479,7 @@ class Seq_alignment(Sequences_base):
 
     def __init__(self, name=None, seqtype=None):
         Sequences_base.__init__(self, name=name, seqtype=None)
+        self.alignment = True
         self.seqpos2alignpos_cache = {}
         self.alignpos2seqpos_cache = {}
         self.annotation = None              # Annotation of each position
@@ -1705,7 +1719,7 @@ class Seq_alignment(Sequences_base):
         shannonlist = []
         numseqs = len(self)
         for col in self.columns():
-            symbolcounts = collections.Counter(col)
+            symbolcounts = Counter(col)
             if not countgaps:
                 numseqs = len(self) - col.count("-")
                 del symbolcounts["-"]       # NOTE: what if column is all gaps???
@@ -1738,7 +1752,7 @@ class Seq_alignment(Sequences_base):
 
         for i,pos in enumerate(positions):
             col = self.getcolumn(pos)
-            counts = collections.Counter(col)
+            counts = Counter(col)
             nA = counts["A"]
             nC = counts["C"]
             nG = counts["G"]
@@ -1760,7 +1774,7 @@ class Seq_alignment(Sequences_base):
         seqlist = []
         for i in range(self.alignlen()):
             col = self.getcolumn(i)
-            nuc_counter = collections.Counter(col)
+            nuc_counter = Counter(col)
             [(nuc, count)] = nuc_counter.most_common(1) # Method returns list of one tuple, which is unpacked
             seqlist.append(nuc)
         seq_string = "".join(seqlist)
