@@ -447,13 +447,23 @@ class Sequence(object):
 
     #######################################################################################
 
-    def composition(self):
+    def composition(self, ignoregaps=True):
         """Returns dictionary with composition for single seq. {letter:freq}"""
 
         countdict = self.residuecounts()
-        length = len(self)
-        freqdict = {res:count/length for res,count in countdict.items()}
-        return freqdict
+        if ignoregaps:
+            alphabet = set(allcounts.keys()) - set("-")
+            length = len(self) - countdict["-"]
+        else:
+            alphabet = set(allcounts.keys())
+            length = len(self)
+
+        compdict = {}
+        for residue in alphabet:
+            count = countdict[residue]
+            freq = count/length
+            compdict[residue] = [count, freq]
+        return compdict
 
     #######################################################################################
 
@@ -1244,15 +1254,10 @@ class Sequences_base(object):
         allcounts = self.residuecounts()
         if ignoregaps:
             alphabet = set(allcounts.keys()) - set("-")
+            totlength = sum(allcounts.values()) - allcounts["-"]
         else:
             alphabet = set(allcounts.keys())
-
-        if self.alignment:
-            totlength = self.alignlen() * len(self)
-        else:
-            totlength = 0
-            for seq in self:
-                totlength += len(seq)
+            totlength = sum(allcounts.values())
 
         compdict = {}
         for residue in alphabet:
