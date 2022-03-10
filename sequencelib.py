@@ -414,18 +414,6 @@ class Sequence(object):
 
         # Note: using this to build distance matrix will mean that for different pairs of sequences
         # a different set of alignment positions are included in the distance measure
-
-        # def indices(mystring):
-        #     """Helper function that finds indices of gaps in string. Returns as set"""
-        #     result = set()
-        #     offset = -1
-        #     while True:
-        #         try:
-        #             offset = mystring.index("-", offset+1)
-        #         except ValueError:
-        #             return result
-        #         result.add(offset)
-
         diffs = self.hamming(other)
         gap_indices_self = indices(self.seq, "-")
         gap_indices_other = indices(other.seq, "-")
@@ -3524,11 +3512,11 @@ class Stockholmfilehandle(Alignfile_reader):
         # Extract information about sites corresponding to insert states
         # Note: I only have to look at one sequence:
         # insert states will be either lowercase or "." in each individual sequence
-        annotation = ["m"] * len(seq)
-        for name,seq in seqdict.items():
-            for i,char in enumerate(seq):
-                if char=="." or char.islower():
-                    annotation[i] = "i"
+        firstseq = next(iter(seqdict.values()))
+        annotation = ["m"] * len(firstseq)
+        for i,char in enumerate(firstseq):
+            if char == "." or char.islower():
+                annotation[i] = "i"
         annotation = "".join(annotation)
 
         # convert to Sequence object of proper type, add Sequence object to alignment object
