@@ -452,10 +452,10 @@ class Sequence(object):
 
         countdict = self.residuecounts()
         if ignoregaps:
-            alphabet = set(allcounts.keys()) - set("-")
+            alphabet = set(countdict.keys()) - set("-")
             length = len(self) - countdict["-"]
         else:
-            alphabet = set(allcounts.keys())
+            alphabet = set(countdict.keys())
             length = len(self)
 
         compdict = {}
