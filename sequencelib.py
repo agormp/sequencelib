@@ -1,4 +1,6 @@
-# By Anders Gorm Pedersen, agpe@dtu.dk, Technical University of Denmark, Bioinformatics, 2012-2021
+# By Anders Gorm Pedersen, agpe@dtu.dk, Technical University of Denmark, Bioinformatics, 2012-2022
+
+##############################################################################################################
 
 """Classes and methods for reading, analyzing, manipulating, and writing DNA and protein sequences"""
 
@@ -21,11 +23,23 @@ import os
 import numpy as np
 import Levenshtein as lv
 
-#############################################################################################
-#############################################################################################
-#
+##############################################################################################################
 # Various functions used by methods, that do not fit neatly in any class
 # (These were previously in "utils.py", but were included here to avoid having to distribute extra library)
+##############################################################################################################
+
+def indices(mystring, substring):
+    """Helper function that finds indices of substring in string. Returns as set"""
+    result = set()
+    offset = -1
+    while True:
+        try:
+            offset = mystring.index(substring, offset+1)
+        except ValueError:
+            return result
+        result.add(offset)
+
+##############################################################################################################
 
 def escape_metachars(text, metachars=".^$*+?{}[]\|()"):
     """Automatically escapes (with backslash) any metachars in input string. Default metachars are those used by re"""
@@ -401,20 +415,20 @@ class Sequence(object):
         # Note: using this to build distance matrix will mean that for different pairs of sequences
         # a different set of alignment positions are included in the distance measure
 
-        def indices(mystring):
-            """Helper function that finds indices of gaps in string. Returns as set"""
-            result = set()
-            offset = -1
-            while True:
-                try:
-                    offset = mystring.index("-", offset+1)
-                except ValueError:
-                    return result
-                result.add(offset)
+        # def indices(mystring):
+        #     """Helper function that finds indices of gaps in string. Returns as set"""
+        #     result = set()
+        #     offset = -1
+        #     while True:
+        #         try:
+        #             offset = mystring.index("-", offset+1)
+        #         except ValueError:
+        #             return result
+        #         result.add(offset)
 
         diffs = self.hamming(other)
-        gap_indices_self = indices(self.seq)
-        gap_indices_other = indices(other.seq)
+        gap_indices_self = indices(self.seq, "-")
+        gap_indices_other = indices(other.seq, "-")
         n_dont_count = len(gap_indices_self | gap_indices_other)
 
         return diffs - n_dont_count
@@ -1079,32 +1093,6 @@ class Sequences_base(object):
         for name in namelist:
             self.remseq(name)
 
-    # #######################################################################################
-    #
-    # def changeseqname(self, oldname, newname, fix_dupnames=False):
-    #     """Change the name of one sequence object from oldname to newname"""
-    #
-    #     if newname in self.seqdict:
-    #         if fix_dupnames:
-    #             i = 2
-    #             fixname = newname + "_" + str(i)
-    #             while fixname in self.seqdict:
-    #                 i += 1
-    #                 fixname = newname + "_" + str(i)
-    #             newname = fixname
-    #         else:
-    #             raise SeqError("Attempting to change sequence name to name that is already present in sequence set: {}".format(newname))
-    #
-    #     if oldname in self.seqdict:
-    #         seq = self.seqdict[oldname]
-    #         seq.name = newname
-    #         self.seqdict[newname] = seq
-    #         del self.seqdict[oldname]
-    #         self.seqnamelist.remove(oldname)
-    #         self.seqnamelist.append(newname)
-    #     else:
-    #         raise SeqError("No such sequence: %s" % oldname)
-
     #######################################################################################
 
     def changeseqname(self, oldname, newname, fix_dupnames=False):
@@ -1502,8 +1490,8 @@ class Seq_alignment(Sequences_base):
         # Implementation note: code would be much clearer, and more robust, if I used
         # the indexing interface from seq and seqset, but directly accessing attributes
         # like this is considerably faster, and this function needs to be efficient!
-        # return [seqobj.seq[i] for seqobj in self.seqdict.values()].  NOTE: this does not respect order of seqs due to dict!!!
-        return [self[j][i] for j in range(len(self))]
+        # Also: for python>=3.6 order in dict is kept
+        return [seqobj.seq[i] for seqobj in self.seqdict.values()]
 
     #######################################################################################
 
@@ -3534,6 +3522,8 @@ class Stockholmfilehandle(Alignfile_reader):
             seqdict[name] = seq
 
         # Extract information about sites corresponding to insert states
+        # Note: I only have to look at one sequence:
+        # insert states will be either lowercase or "." in each individual sequence
         annotation = ["m"] * len(seq)
         for name,seq in seqdict.items():
             for i,char in enumerate(seq):
