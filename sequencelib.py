@@ -960,11 +960,14 @@ class Sequences_base(object):
         Slice returns subset (Seq_set or Seq_alignment object depending on what subclass we are in).
         Tuple ([row, column] indexing) returns subsequence of selected sequence(s)"""
 
+        # Python note: "for loops expect that an IndexError will be raised for illegal indexes
+        # to allow proper detection of the end of the sequence."
+        # Seems I should have that here?
         if isinstance(index, int):
             return self.seqdict[self.seqnamelist[index]]
         elif isinstance(index, slice):
             return self.subset(self.seqnamelist[index])
-        elif isinstance(index, tuple):
+        elif isinstance(index, tuple):  # Do I ever use this?
             i, j = index
             s = self[i]
             if isinstance(j, slice):
@@ -1242,8 +1245,8 @@ class Sequences_base(object):
         """Returns dictionary with cumulated counts for set of seqs {symbol:count}"""
 
         allcounts = Counter()
-        for seq in self:
-            allcounts.update(seq)
+        for seqobj in self:
+            allcounts.update(seqobj.seq)   # Perhaps a bit unclean to rely on implementation
         return allcounts
 
     #######################################################################################
