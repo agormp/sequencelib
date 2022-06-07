@@ -2928,29 +2928,22 @@ class Genbankfilehandle(Seqfile_reader):
     """Reader class for GenBank files"""
 
     def __init__(self, filename, seqtype="autodetect", check_alphabet=False, degap=False, nameishandle=False,
-                    namefromfeatures=None):
+                    namefromfields=None):
 
-        self.namefromfeatures = namefromfeatures
-        if namefromfeatures:
-            class Featurestruct(object):
-                def __init__(self):
-                    self.seen = False
-                    self.value = ""
-            self.featurelist = self.namefromfeatures.split(",")
-            self.featuredict = {}
-            for feature in self.featurelist:
-                self.featuredict[feature] = Featurestruct()
-
+        self.namefromfields = namefromfields
         Seqfile_reader.__init__(self, filename, seqtype, check_alphabet, degap, nameishandle)
 
         # Perform "magic number" check of whether file appears to be in GenBank format
+        # Note: In genbank databasefiles LOCUS is not on first line. Alter?
         line = self.seqfile.readline()
         if not line.startswith("LOCUS"):
             raise SeqError("File '%s' does not appear to be in GenBank format" % self.filename)
 
         # If everything was kosher: move filepointer back to beginning of file
+        # initialise line to placeholder
         else:
             self.seqfile.seek(0)
+            self.line = "placeholder"
 
     #######################################################################################
 
@@ -2962,115 +2955,106 @@ class Genbankfilehandle(Seqfile_reader):
     def __next__(self):
         """Parser function, returns next seq as Sequence object"""
 
-        # Note: This function is required in combination with baseclass __iter__() for iteration
-        # Note 2: It is probably rarely (if ever?) that there is more than one sequence in a
-        #         genbank file, but I implemented like this to be consistent
-        # Note 3: Most of complexity of handling genbank files in this function is due to handling of name
-        #         There are three name-scenarios:
-        #           (1) name should be derived from features listed in "namefromfeatures" option
-        #           (2) if option 1 not requested: name is constructed from VERSION feature
-        #           (3) if option 1 not requested and VERSION field not present: use LOCUS feature instead
+        # Locate next LOCUS line (= start of sequence).
+        # If EOF reached before finding LOCUS: raise StopIteration and close seqfile
+        # After this function filepointer is on line starting with LOCUS
+        self.locusname,self.seqlen = self.find_LOCUS()
 
-        # Iterate over lines in file until end of sequence marker "//" is reached
-        currentfield = None
-        comments = ""
+        # Read all non-sequence info into list of lines, for subsequent parsing
+        # After this function filepointer is on line starting with ORIGIN
+        metadata = self.read_metadata()
 
+        # Parse metadata to extract annotation info
+        annotation,comments = self.extract_annotation(metadata)
+
+        # Parse metadata to extract sequence name
+        seqname = self.extract_name(metadata)
+        del metadata #probably not worth it to save memory, even if full genome...
+
+        # Read sequence
+        seq = self.read_seq()
+
+        # Use method in baseclass to determine seqtype and construct proper sequence object
+        seqobject = Seqfile_reader.makeseq(self, seqname, seq, annotation, comments)
+        return seqobject
+
+    #######################################################################################
+
+    def find_LOCUS(self):
+        # Find start of next sequence record, halt iteration i EOF encountered first
+        while not self.line.startswith("LOCUS"):
+            self.line = self.seqfile.readline()
+            if len(self.line)==0:
+                self.seqfile.close()
+                raise StopIteration()
+
+        # We are now at LOCUS line at top of sequence record
+        # derive sequence type if possible, store ID for possible use as name
+        words = self.line.split()
+        locusname = words[1]
+        seqlen = int(words[2])
+        molecule = words[4]
+        if molecule == "DNA":
+            self.seqtype = "DNA"
+        elif molecule == "PRT":
+            self.seqtype = "protein"
+        else:
+            self.seqtype = "autodetect"
+
+        return locusname,seqlen
+
+    #######################################################################################
+
+    def read_metadata(self):
+        metadatalist = []
+        while not self.line.startswith("ORIGIN"):
+            self.line = self.seqfile.readline()
+            metadatalist.append(self.line)
+        return metadatalist
+
+    #######################################################################################
+
+    def extract_annotation(self, metadata):
+        # TO BE IMPLEMENTED
+        annotation = ""
+        commments= ""
+        return annotation,commments
+
+    #######################################################################################
+
+    def extract_name(self, metadata):
+        if self.namefromfields:
+            seqname = ""
+            fieldlist = self.namefromfields.split(",")
+            for field in fieldlist:
+                seen = False
+                for line in metadata:
+                    words = line.split()
+                    if words[0] == field:
+                        if seqname:
+                            seqname += "_"
+                        seqname += "_".join(words[1:])
+                        seen = True
+                        break
+                if not seen:
+                    raise SeqError("This field was not seen in GenBank file: '{}'".format(field))
+        else:
+            seqname = self.locusname
+
+        return seqname
+
+    #######################################################################################
+
+    def read_seq(self):
+        # File pointer is currently at ORIGIN: sequence starts on next line
+        seqlist = []
         line = self.seqfile.readline()
         while not line.startswith("//"):
             words = line.split()
-            # Skip empty lines. Bit of a hack, should rethink
-            if not line.strip():
-                line = self.seqfile.readline()
-                continue
-
-            # FEATURES: if option "namefromfeatures" is set: construct name from listed features;
-            # keep track of whether all listed features have been seen
-            if self.namefromfeatures and (words[0] in self.featurelist):
-                currentfield = words[0]
-                if self.featuredict[currentfield].seen:
-                    self.featuredict[currentfield].value += "_"
-                else:
-                    self.featuredict[currentfield].seen = True
-                self.featuredict[currentfield].value += "_".join(words[1:])
-            elif self.namefromfeatures and line.startswith("            ") and currentfield in self.featurelist:
-                self.featuredict[currentfield].value += "_"
-                self.featuredict[currentfield].value += "_".join(words)
-
-            # VERSION: use to set name (from accession and GI numbers) if this was not set using custom features
-            # Note: there are examples where this field is NOT present - backup plan for name is to use LOCUS info
-            elif words[0] == "VERSION":
-                accno = words[1]
-                currentfield = "VERSION"
-
-            # LOCUS: derive sequence type if possible, ignore rest of line
-            elif words[0] == "LOCUS":
-                locusname = words[1]        # Backup for sequence name (if not set using features or VERSION field)
-                molecule = words[4]
-                if molecule == "DNA":
-                    self.seqtype = "DNA"
-                elif molecule == "PRT":
-                    self.seqtype = "protein"
-                else:
-                    self.seqtype = "autodetect"
-                currentfield = "LOCUS"
-
-            # DEFINITION: use this info for the comments attribute
-            elif words[0] == "DEFINITION":
-                comments = " ".join(words[1:])
-                currentfield = "DEFINITION"
-
-            # DEFINITION, after first line: add content to comments
-            elif line.startswith("            ") and currentfield == "DEFINITION":
-                comments += " ".join(words)
-
-            # ORIGIN: sequence starts on next line:
-            elif words[0] == "ORIGIN":
-                currentfield = "ORIGIN"
-                seqlist = []
-
-            # ORIGIN: subsequent lines (once ORIGIN has been seen, this is assumed to be the current field):
-            elif currentfield == "ORIGIN":
-                seqlist.append("".join(words[1:]))
-
-            # Other fields
-            else:
-                currentfield = None
-
+            seqlist.append("".join(words[1:]))
             line = self.seqfile.readline()
-
-        # EOF marker // has been reached, and iteration should stop
-        self.seqfile.close()
-        raise StopIteration()
-        # NOTE: I think I need to have some sort of eof check somwehere but am unsure how that combines with
-        # potential multi sequence gb file (so should continue after //. IS stopiteration for one seq or full file???)
-
-
-        # If option was requested: Set name using value fields in listed features. Check that all features were seen
-        if self.namefromfeatures:
-            name = ""
-            for feature in self.featurelist:
-                if not self.featuredict[feature].seen:
-                    raise SeqError("This feature was not seen in GenBank file: '%s'" % feature)
-                else:
-                    if name:
-                        name += "_" + self.featuredict[feature].value
-                    else:
-                        name += self.featuredict[feature].value
-
-        # Else use accession number and GI from VERSION field
-        elif accno:
-            name = accno
-
-        # If none of the above were present: fall back on name from LOCUS field
-        else:
-            name = locusname
-
-        annotation = ""         # Note: should parse annotation from features
         seq = "".join(seqlist)
-
-        # Use method in baseclass to determine seqtype and construct proper sequence object
-        seqobject = Seqfile_reader.makeseq(self, name, seq, annotation, comments)
-        return seqobject
+        return seq
 
 #############################################################################################
 #############################################################################################
