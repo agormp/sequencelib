@@ -4,3 +4,4 @@ notes/
 sequencelib.egg-info/
 dist/
 tests/
+.DS_Store
