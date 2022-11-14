@@ -25,7 +25,38 @@ import Levenshtein as lv
 
 ##############################################################################################################
 # Various functions used by methods, that do not fit neatly in any class
-# (These were previously in "utils.py", but were included here to avoid having to distribute extra library)
+##############################################################################################################
+
+def find_seqtype(seqsample):
+    letters = set(seqsample) - set("-")   # Accepts most input types (list, string, set)
+    non_DNAletters = letters - Const.DNA_maxambig
+    non_proteinletters = letters - Const.Protein_maxambig
+    non_ASCIIletters = letters - Const.ASCII
+    if non_ASCIIletters:
+        raise SeqError("Unknown sequence type. Unrecognized symbols: {}".format(list(non_ASCIIletters)))
+    elif non_proteinletters:
+        return "ASCII"
+    elif non_DNAletters:
+        return "protein"
+    else:
+        return "DNA"
+
+##############################################################################################################
+
+def seqtype_attributes(seqtype):
+    """Returns alphabet and ambigsymbols for given seqtype"""
+    
+    # Python note: hack. Should rethink logic around seqtypes and refactor
+    # They can be set too many places at both container and element level
+    if seqtype == "DNA":
+        return (Const.DNA_maxambig, Const.DNA_maxambig - Const.DNA)
+    elif seqtype == "protein":
+        return (Const.Protein_maxambig, Const.Protein_maxambig - Const.Protein)
+    elif seqtype == "ASCII":
+        return (Const.ASCII, set())
+    else:
+        raise SeqError("Unknown sequence type: {}".format(seqtype))
+
 ##############################################################################################################
 
 def indices(mystring, substring):
@@ -112,7 +143,7 @@ def remove_comments(text, leftdelim, rightdelim=None):
         processed_text += text[prevpos:]
     return processed_text
 
-##############################################################################################################
+#############################################################################################################
 
 def make_sparseencoder(alphabet, padding="X"):
     """Returns function that can sparse-encode strings in specified alphabet"""
@@ -182,7 +213,7 @@ class Const(object):
 class Sequence(object):
     """Baseclass for sequence classes"""
 
-    def __init__(self, name, seq, annotation="", comments="", check_alphabet=False, degap=False):
+    def __init__(self, name, seq, annotation="", comments="", check_alphabet=True, degap=False):
 
         # NOTE: additional fields can be added later (e.g., feature list, etc.)
         self.name = name
@@ -553,7 +584,7 @@ class DNA_sequence(Sequence):
 
     def __init__(self, name, seq, annotation="", comments="", check_alphabet=False, degap=False):
         self.seqtype="DNA"
-        self.alphabet = Const.DNA_typicalambig
+        self.alphabet = Const.DNA_maxambig
         self.ambigsymbols = self.alphabet - Const.DNA
         Sequence.__init__(self, name, seq, annotation, comments, check_alphabet, degap)
 
@@ -627,7 +658,7 @@ class Protein_sequence(Sequence):
 
     def __init__(self, name, seq, annotation="", comments="", check_alphabet=False, degap=False):
         self.seqtype="protein"
-        self.alphabet = Const.Protein_minambig
+        self.alphabet = Const.Protein_maxambig
         self.ambigsymbols = self.alphabet - Const.Protein
         Sequence.__init__(self, name, seq, annotation, comments, check_alphabet, degap)
 
@@ -645,6 +676,8 @@ class Protein_sequence(Sequence):
 
 class ASCII_sequence(Sequence):
     """Class containing one sequence containing ASCII letters, and corresponding methods"""
+    
+    # Python note: will this ever be used???
 
     def __init__(self, name, seq, annotation="", comments="", check_alphabet=False, degap=False):
         self.seqtype="ASCII"
@@ -944,7 +977,14 @@ class Sequences_base(object):
         self.name = name            # Label for set of sequences
         self.seqdict = {}           # seqdict format: {seqname:seqobject, ...}
         self.seqnamelist = []       # seqnamelist format: [name1, name2, ...]
-        self.seqtype = seqtype
+        if seqtype is None:
+            self.seqtype = None
+        else:
+            # Python note: seqtype perhaps should be object with separate attributes for 
+            # seqtype, alphabet and ambigsymbols!
+            # Also: I am setting seqtype in too many different places (Sequence objects 
+            # for instance). Rethink and refactor!!
+            self.alphabet, self.ambigsymbols = seqtype_attributes(seqtype)
 
     #######################################################################################
 
@@ -1051,11 +1091,9 @@ class Sequences_base(object):
             if not silently_discard_dup_name:
                 raise SeqError("Duplicate sequence names: %s" % name)
         else:
-            # Set seqtype, alphabet, and ambiguitysymbols of Seq_set if this is the first sequence added.
-            # Check type consistency if not the first sequence added.
-            # Note: Strictly speaking mixed types should perhaps be allowed?
-            # BUT: Seq_alignment is a subclass and currently relies on this type check!!!
-            if len(self)==0:
+            # Set seqtype, alphabet, and ambiguitysymbols of Seq_set if not already set
+            # Check type consistency otherwise.
+            if not self.seqtype:
                 self.seqtype = seq.seqtype
                 self.alphabet = seq.alphabet
                 self.ambigsymbols = seq.ambigsymbols
@@ -1466,8 +1504,46 @@ class Seq_alignment(Sequences_base):
         self.alignment = True
         self.seqpos2alignpos_cache = {}
         self.alignpos2seqpos_cache = {}
-        self.annotation = None              # Annotation of each position
-                                            # Potentially one char per column
+        self.annotation = None           
+
+    #######################################################################################
+
+    def addseq(self, seq, silently_discard_dup_name=False):
+        """Add Sequence object to alignment"""
+        # Overrides baseclass function. Sets partition info + ensures consistent sequencelengths
+        if len(self) == 0:
+            self.partitions = [(self.name, 0, len(seq))]  # List of (name, partition-start, partition-length) tuples
+        else:
+            if len(seq) != len(self[0]):
+                raise SeqError("Not an alignment: these sequences have different lengths: %s and %s" % (seq.name, self[0].name))
+
+        # If length was OK, add sequence by calling baseclass method
+        Sequences_base.addseq(self, seq, silently_discard_dup_name)
+
+    #######################################################################################
+
+    def appendalignment(self, other):
+        """Appends sequences in 'other' to the end of similarly named sequences in 'self'"""
+
+        # Update partition info in self
+        partitiontuple = (other.name, self.alignlen(), other.alignlen())    # (name, partition-start, partition-length)
+        if len(self) == 0:
+            self.partitions = [partitiontuple]  # List of (name, partition-start, partition-length) tuples
+        else:
+            self.partitions.append(partitiontuple)
+
+        # If alignment object is empty: Initialise with other
+        if len(self) == 0:
+            self.addseqset(other)
+        # Else: match sequences, appending end to end
+        else:
+            for seq in self:
+                try:
+                    matchingseq = other.getseq(seq.name)
+                except SeqError:
+                    # Re-throw exception with more precise description of problem (we know more than just that name was not found)
+                    raise SeqError("Sequences in files have different names. No match found for %s" % seq.name)
+                seq.appendseq(matchingseq)
 
     #######################################################################################
 
@@ -1794,45 +1870,6 @@ class Seq_alignment(Sequences_base):
     #
     #     return subseqs
     #
-    #######################################################################################
-
-    def addseq(self, seq, silently_discard_dup_name=False):
-        """Add Sequence object to alignment"""
-        # Overrides baseclass function. Sets partition info + ensures consistent sequencelengths
-        if len(self) == 0:
-            self.partitions = [(self.name, 0, len(seq))]  # List of (name, partition-start, partition-length) tuples
-        else:
-            if len(seq) != len(self[0]):
-                raise SeqError("Not an alignment: these sequences have different lengths: %s and %s" % (seq.name, self[0].name))
-
-        # If length was OK, add sequence by calling baseclass method
-        Sequences_base.addseq(self, seq, silently_discard_dup_name)
-
-    #######################################################################################
-
-    def appendalignment(self, other):
-        """Appends sequences in 'other' to the end of similarly named sequences in 'self'"""
-
-        # Update partition info in self
-        partitiontuple = (other.name, self.alignlen(), other.alignlen())    # (name, partition-start, partition-length)
-        if len(self) == 0:
-            self.partitions = [partitiontuple]  # List of (name, partition-start, partition-length) tuples
-        else:
-            self.partitions.append(partitiontuple)
-
-        # If alignment object is empty: Initialise with other
-        if len(self) == 0:
-            self.addseqset(other)
-        # Else: match sequences, appending end to end
-        else:
-            for seq in self:
-                try:
-                    matchingseq = other.getseq(seq.name)
-                except SeqError:
-                    # Re-throw exception with more precise description of problem (we know more than just that name was not found)
-                    raise SeqError("Sequences in files have different names. No match found for %s" % seq.name)
-                seq.appendseq(matchingseq)
-
     #######################################################################################
 
     def partitions_as_seqalignments(self):
@@ -2711,33 +2748,22 @@ class Seqfile_reader(object):
     #######################################################################################
 
     def makeseq(self, name, seq, annotation="", comments=""):
-        """Takes name, sequence, annotation, and comments, returns sequence object of correct type"""
+        """Takes name, sequence, annotation, and comments, returns sequence object of correct type.
+        Called by subclass"""
 
-        # Called by subclass
-
-        # Convert to upper case
         seq = seq.upper()
-
-        # Determine seqtype.
-
-        # If autodetection of seqtype is requested: compare letters in seq to possible alphabets.
-        # Only done for first sequence: after checking, the filehandle's seqtype is set to first detected type
         if self.seqtype == "autodetect":
-            seqletters = set(seq) - set("-") # automatically uniquefies chars
-            if seqletters <= Const.DNA_typicalambig:
-                self.seqtype = "DNA"
+            self.seqtype = find_seqtype(seq)
+            if self.seqtype == "DNA":
                 return DNA_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
-            elif seqletters <= Const.Protein_minambig:
-                self.seqtype = "protein"
+            elif self.seqtype ==  "protein":
                 return Protein_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
-            elif seqletters <= Const.ASCII:
-                self.seqtype = "ASCII"
+            elif self.seqtype == "ASCII":
                 return ASCII_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
             else:
-                raise SeqError("Unknown symbols encountered during seqtype autodetection: %s" %
-                               (list(seqletters - Const.ASCII)))
-
-        # If specific seqtype requested, use that
+                unknown_symbols = list(seqletters - Const.ASCII)
+                msg = "Unknown symbols encountered during seqtype autodetection: {}".format(unknown_symbols)
+                raise SeqError(msg)
         elif self.seqtype == "DNA":
             return DNA_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
         elif self.seqtype == "protein":
@@ -3200,29 +3226,19 @@ class Alignfile_reader(object):
     def makeseq(self, name, seq, annotation="", comments=""):
         """Takes name, sequence, annotation, and comments, returns sequence object of correct type"""
 
-        # Convert to upper case
         seq = seq.upper()
-
-        # Determine seqtype.
-
-        # If autodetection of seqtype is requested: compare letters in seq to possible alphabets.
-        # Only done for first sequence: after checking, the filehandles seqtype is set to first detected type
         if self.seqtype == "autodetect":
-            seqletters = set(seq) - set("-") # automatically uniquefies chars
-            if seqletters <= Const.DNA_typicalambig:
-                self.seqtype = "DNA"
+            self.seqtype = find_seqtype(seq)
+            if self.seqtype == "DNA":
                 return DNA_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
-            elif seqletters <= Const.Protein_minambig:
-                self.seqtype = "protein"
+            elif self.seqtype ==  "protein":
                 return Protein_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
-            elif seqletters <= Const.ASCII:
-                self.seqtype = "ASCII"
+            elif self.seqtype == "ASCII":
                 return ASCII_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
             else:
-                raise SeqError("Unknown symbols encountered during seqtype autodetection: %s" %
-                               (list(seqletters - Const.ASCII)))
-
-        # If specific seqtype requested, use that
+                unknown_symbols = list(seqletters - Const.ASCII)
+                msg = "Unknown symbols encountered during seqtype autodetection: {}".format(unknown_symbols)
+                raise SeqError(msg)
         elif self.seqtype == "DNA":
             return DNA_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
         elif self.seqtype == "protein":
@@ -3230,7 +3246,7 @@ class Alignfile_reader(object):
         elif self.seqtype == "ASCII":
             return ASCII_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
         else:
-            raise SeqError("Unknown sequence type: %s" % self.seqtype, self.degap)
+            raise SeqError("Unknown sequence type: %s" % self.seqtype)
 
     #######################################################################################
 
