@@ -324,6 +324,29 @@ class Sequence(object):
 
     #######################################################################################
 
+    def subseqpos(self, poslist, namesuffix=None):
+        """Returns subsequence containing residues on selected positions as 
+        sequence object of proper type. Indexing can start at zero or one"""
+
+        if namesuffix:
+            name = self.name + namesuffix
+        else:
+            name = self.name
+        seqlist = [self[i] for i in poslist]
+        seq = "".join(seqlist)
+        comments = self.comments
+        if self.annotation:
+            annotlist = [self.annotation[i] for i in poslist]
+            annotation = "".join(annotlist)
+        else:
+            annotation = ""
+        
+        subseq = self.__class__(name, seq, comments, annotation)    # Create new object of same class as self
+                                                                    # (don't know which sequence type we're in)
+        return(subseq)
+
+    #######################################################################################
+
     def appendseq(self, other):
         """Appends seq from other to end of self. Name from self is retained"""
         self.seq += other.seq
@@ -432,10 +455,28 @@ class Sequence(object):
 
     #######################################################################################
 
+    def seqdiff(self, other, zeroindex=True):
+        """Returns list of tuples summarizing difference between seqs in self and other:
+            (site, residue1, residue2)
+        Option zeroindex=False causes site numbering to start at 1 (otherwise 0)
+        """
+
+        difflist = []
+        for i, (res1, res2) in enumerate(zip(self.seq, other.seq)):
+            if res1 != res2:
+                if zeroindex:
+                    difflist.append((i, res1, res2))
+                else:
+                    difflist.append((i+1, res1, res2))
+        return difflist
+        # Python note: perhaps some of these returned lists should be generators instead
+
+    #######################################################################################
+
     def hamming(self, other):
         """Directly observable distance between self and other (absolute count of different positions)"""
 
-        # Note: completely outsourced to Levenshtein library which is blazing fast!
+        # Python note: completely outsourced to Levenshtein library which is blazing fast!
         return lv.hamming(self.seq, other.seq)
 
     #######################################################################################
@@ -1597,6 +1638,26 @@ class Seq_alignment(Sequences_base):
 
     #######################################################################################
 
+    def conscols(self):
+        """Returns list of columns that are conserved"""
+        conscols = []
+        for i, col in enumerate(self.columns()):
+            if len(set(col)) == 1:        # nvalues == 1 <=> conserved column
+                conscols.append(i)
+        return conscols
+
+    #######################################################################################
+
+    def varcols(self):
+        """Returns list of columns that are variable (not conserved)"""
+        varcols = []
+        for i, col in enumerate(self.columns()):
+            if len(set(col)) > 1:        # nvalues == 1 <=> conserved column
+                varcols.append(i)
+        return varcols
+
+    #######################################################################################
+
     def indexfilter(self, keeplist):
         """Discards all columns whose indices are not in keeplist"""
         for seq in self:
@@ -1683,15 +1744,8 @@ class Seq_alignment(Sequences_base):
 
     def remconscol(self):
         """Removes columns where all symbols are identical (conserved columns)"""
-
-        # Construct list of columns that are not conserved (and should be kept)
-        keeplist = []
-        for i, col in enumerate(self.columns()):
-            if len(set(col)) != 1:        # nvalues == 1 <=> conserved column
-                keeplist.append(i)
-
-        # Apply filter to sequences so only non-conserved positions are kept
-        self.indexfilter(keeplist)
+        conscols = self.conscols()
+        self.remcols(conscols)
 
     #######################################################################################
 
