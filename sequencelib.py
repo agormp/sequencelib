@@ -28,18 +28,17 @@ import Levenshtein as lv
 ##############################################################################################################
 
 def find_seqtype(seqsample):
+    # Note: for small sequences it can occur that Protein seq contains only DNA_maxambig symbols
+    # Perhaps look at frequencies instead? Other approaches?
     letters = set(seqsample) - set("-")   # Accepts most input types (list, string, set)
-    non_DNAletters = letters - Const.DNA_maxambig
-    non_proteinletters = letters - Const.Protein_maxambig
-    non_ASCIIletters = letters - Const.ASCII
-    if non_ASCIIletters:
-        raise SeqError("Unknown sequence type. Unrecognized symbols: {}".format(list(non_ASCIIletters)))
-    elif non_proteinletters:
-        return "ASCII"
-    elif non_DNAletters:
-        return "protein"
-    else:
+    if letters <= Const.DNA_maxambig:
         return "DNA"
+    elif letters <= Const.Protein_maxambig:
+        return "protein"
+    elif letters <= Const.ASCII:
+        return "ASCII"
+    else:
+        raise SeqError("Unknown sequence type. Unrecognized symbols: {}".format(list(non_ASCIIletters)))
 
 ##############################################################################################################
 
@@ -72,7 +71,7 @@ def indices(mystring, substring):
 
 ##############################################################################################################
 
-def escape_metachars(text, metachars=".^$*+?{}[]\|()"):
+def escape_metachars(text, metachars=r".^$*+?{}[]\|()"):
     """Automatically escapes (with backslash) any metachars in input string. Default metachars are those used by re"""
 
     newtxt = ""
