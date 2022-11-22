@@ -36,9 +36,9 @@ def find_seqtype(seqsample):
     elif letters <= Const.Protein_maxambig:
         return "protein"
     elif letters <= Const.ASCII:
-        return "ASCII"
+        return "ASCII"     # Maybe drop as a type?
     else:
-        raise SeqError("Unknown sequence type. Unrecognized symbols: {}".format(list(non_ASCIIletters)))
+        raise SeqError("Unknown sequence type. Unrecognized symbols: {}".format(list(letters - Const.ASCII)))
 
 ##############################################################################################################
 
@@ -71,24 +71,12 @@ def indices(mystring, substring):
 
 ##############################################################################################################
 
-def escape_metachars(text, metachars=r".^$*+?{}[]\|()"):
-    """Automatically escapes (with backslash) any metachars in input string. Default metachars are those used by re"""
-
-    newtxt = ""
-    for char in text:
-        if char in metachars:
-            newtxt += "\\" + char
-        else:
-            newtxt += char
-    return newtxt
-
-##############################################################################################################
-
 def remove_comments(text, leftdelim, rightdelim=None):
     """Takes input string and strips away commented text, delimited by 'leftdelim' and 'rightdelim'.
         Also deals with nested comments."""
 
     # NOTE: only deals with block comments at present
+    # Python note: maybe this is too general. Will I ever use multichar delims?
     # Sanity checks: delimiters can not be identical, and one cannot be substring of the other
     if leftdelim == rightdelim:
         raise Exception("Left and right delimiters are identical")
@@ -98,8 +86,8 @@ def remove_comments(text, leftdelim, rightdelim=None):
         raise Exception("Right delimiter is substring of left delimiters")
 
     # Preprocess delims for use in re etc
-    leftdelim = escape_metachars(leftdelim)
-    rightdelim = escape_metachars(rightdelim)
+    leftdelim = re.escape(leftdelim)
+    rightdelim = re.escape(rightdelim)
 
     # Construct sorted list of tuples of the form [(0, 'start'), (5, 'stop'), (7, 'start'), ...]
     delimlist = [(delim.start(), "start") for delim in re.finditer(leftdelim, text)]
