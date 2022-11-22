@@ -87,6 +87,62 @@ class Test_indices:
         inputstring = "AAAAAAAAAA hehehehe AAAAAAA hehe AAAAA"
         assert sq.indices(inputstring, "hehe") == set([11,13,15,28])
     
+###################################################################################################
+
+class Test_remove_comments:
+    
+    def test_unnested_1chardelim(self):
+        input = "This sentence [which is an example] contains one comment"
+        assert (sq.remove_comments(input, leftdelim="[", rightdelim="]")
+                == "This sentence  contains one comment")
+
+    def test_unnested__1chardelim_multiline(self):
+        input = """This sentence [which is an example of a string with
+                a multiline un-nested comment] contains one comment"""
+        expexted_output = """This sentence  contains one comment"""
+        assert (sq.remove_comments(input, leftdelim="[", rightdelim="]")
+                == expexted_output)
+
+    def test_nested(self):
+        input = "This sentence [which is an example [or is it?]] contains nested comments"
+        assert (sq.remove_comments(input, leftdelim="[", rightdelim="]")
+                == "This sentence  contains nested comments")
+                
+    def test_nested__1chardelim_multiline(self):
+        input = """This sentence [which is also an example] is far more complicated.
+        [or is it [and here 'it' refers to the sentence]]. It contains nested
+        comments [like[this]] and newlines. It also contains nested comments
+        spread over multiple lines like this: [I am not sure this type of comment
+        will ever appear in actual sequences [it might in trees though]]. The end"""
+
+        expexted_output = """This sentence  is far more complicated.
+        . It contains nested
+        comments  and newlines. It also contains nested comments
+        spread over multiple lines like this: . The end"""
+
+        assert (sq.remove_comments(input, leftdelim="[", rightdelim="]")
+                == expexted_output)
+
+    def test_unnested_multichardelim(self):
+        input = "This sentence <B>which is an example<E> contains one comment"
+        assert (sq.remove_comments(input, leftdelim="<B>", rightdelim="<E>")
+                == "This sentence  contains one comment")
+
+    def test_nested__multichardelim_multiline(self):
+        input = """This sentence <com>which is also an example</com> is far more complicated.
+        <com>or is it <com>and here 'it' refers to the sentence</com></com>. It contains nested
+        comments <com>like<com>this</com></com> and newlines. It also contains nested comments
+        spread over multiple lines like this: <com>I am not sure this type of comment
+        will ever appear in actual sequences <com>it might in trees though</com></com>. The end"""
+
+        expexted_output = """This sentence  is far more complicated.
+        . It contains nested
+        comments  and newlines. It also contains nested comments
+        spread over multiple lines like this: . The end"""
+
+        assert (sq.remove_comments(input, leftdelim="<com>", rightdelim="</com>")
+                == expexted_output)
+
 
 ###################################################################################################
 ###################################################################################################
