@@ -77,58 +77,58 @@ def remove_comments(text, leftdelim, rightdelim=None):
 
     # NOTE: only deals with block comments at present
     # Python note: maybe this is too general. Will I ever use multichar delims?
-    # Sanity checks: delimiters can not be identical, and one cannot be substring of the other
+    def wordsoverlap(w1, w2):
+        for i in range(1, len(w2)):
+            if w1.startswith(w2[i:]):
+                return True
+        for i in range(1, len(w1)):
+            if w2.startswith(w1[i:]):
+                return True
+        return False
+
     if leftdelim == rightdelim:
-        raise Exception("Left and right delimiters are identical")
+        raise SeqError("Left and right delimiters are identical")
     elif leftdelim in rightdelim:
-        raise Exception("Left delimiter is substring of right delimiters")
+        raise SeqError("Left delimiter is substring of right delimiters")
     elif rightdelim in leftdelim:
-        raise Exception("Right delimiter is substring of left delimiters")
+        raise ExcepSeqErrortion("Right delimiter is substring of left delimiters")
+    elif wordsoverlap(leftdelim, rightdelim):
+        raise SeqError("Right and left delimiters overlap")
 
     # Preprocess delims for use in re etc
     leftdelim = re.escape(leftdelim)
     rightdelim = re.escape(rightdelim)
 
     # Construct sorted list of tuples of the form [(0, 'start'), (5, 'stop'), (7, 'start'), ...]
-    delimlist = [(delim.start(), "start") for delim in re.finditer(leftdelim, text)]
+    delimlist = [(match.start(), match.end(), "start") for match in re.finditer(leftdelim, text)]
     # If text contains no starts (=> no comments): return un-altered text
     if not delimlist:
         return text
     else:
-        delimlist.extend([(delim.start(), "stop") for delim in re.finditer(rightdelim, text)])
+        delimlist.extend([(match.start(), match.end(), "stop") for match in re.finditer(rightdelim, text)])
         delimlist.sort()
-
-    # Resolve issues with overlapping delimiters:
-    tmplist = [delimlist[0]]
-    for i in range(1, len(delimlist)):
-        (start1, delim1) = delimlist[i - 1]
-        (start2, delim2) = delimlist[i]
-        if start2 > start1 + len(leftdelim) - 1:    # If  next item does not overlap previous item
-            tmplist.append(delimlist[i])
-    delimlist = tmplist
 
     # Traverse text; along the way copy text not inside comment-delimiter pairs.
     # Use stack ("unmatched_starts") to keep track of nesting
-    offset = len(rightdelim) - 1
     unmatched_starts = 0
     prevpos = 0
-    processed_text = ""
-    for (start, delim) in delimlist:
-        if delim == "start":
+    processed_text = []
+    for (match_start, match_end, match_type) in delimlist:
+        if match_type == "start":
             unmatched_starts += 1
             if unmatched_starts == 1:                               # Beginning of new comment region
-                processed_text += text[prevpos:start]
-        elif delim == "stop":
+                processed_text.append(text[prevpos:match_start])
+        elif match_type == "stop":
             unmatched_starts -= 1
             if unmatched_starts == 0:                               # End of comment region
-                prevpos = start + offset
+                prevpos = match_end
             elif unmatched_starts == -1:                            # Error: more right delims than left delims
-                raise Exception("Unmatched end-comment delimiter: {}".format(text[pos-5:pos+5]))
+                raise Exception("Unmatched end-comment delimiter. Context: '{}'".format(text[prevpos-10:prevpos+10]))
 
     # Add final block of text if relevant (i.e., if text does not stop with rightdelim), return processed text
     if prevpos < len(text):
-        processed_text += text[prevpos:]
-    return processed_text
+        processed_text.append(text[prevpos:])
+    return "".join(processed_text)
 
 #############################################################################################################
 
