@@ -71,7 +71,7 @@ def indices(mystring, substring):
 
 ##############################################################################################################
 
-def remove_comments(text, leftdelim, rightdelim=None):
+def remove_comments(text, leftdelim, rightdelim):
     """Takes input string and strips away commented text, delimited by 'leftdelim' and 'rightdelim'.
         Also deals with nested comments."""
 
@@ -157,7 +157,8 @@ def make_sparseencoder(alphabet, padding="X"):
 
     # Enclosed function that will be returned and that can do sparse-encoding of input string
     def sparse_encoder(sequence_string):
-        """Sparse-encodes input string. Padding is encoded as all zeroes"""
+        """Sparse-encodes input string. Output is numpy array. Padding encoded as all zeroes:
+            array([0,0,0,1,1,0,0,0,0,0,0,0])"""
         sparse_list = []
         for residue in sequence_string:
             sparse_list.extend(transdict[residue])
@@ -200,7 +201,7 @@ class Const(object):
 class Sequence(object):
     """Baseclass for sequence classes"""
 
-    def __init__(self, name, seq, annotation="", comments="", check_alphabet=True, degap=False):
+    def __init__(self, name, seq, annotation, comments, check_alphabet, degap):
 
         # NOTE: additional fields can be added later (e.g., feature list, etc.)
         self.name = name
@@ -216,8 +217,9 @@ class Sequence(object):
 
         # If requested: use set arithemtic to check whether seq contains any non-alphabet characters
         if check_alphabet:
-            seqset = set(self.seq.upper())                       # Automatically uniquefies chars
-            non_alphabet = seqset - self.alphabet - set("-.")    # Also subtract gapchars
+            seqset = set(self.seq.upper())                       
+            non_alphabet = seqset - self.alphabet - set("-.")    
+            
             if len(non_alphabet)>0:
                 raise SeqError("Unknown symbols in sequence %s: %s" % (name, list(non_alphabet)))
 
@@ -277,6 +279,14 @@ class Sequence(object):
 
     #######################################################################################
 
+    def copy_seqobject(self):
+        """Customized deep copy of sequence object"""
+        
+        seqcopy = self.__class__(self.name, self.seq, self.annotation, self.comments)
+        return seqcopy
+
+    #######################################################################################
+
     def rename(self, newname):
         """Changes name of sequence"""
 
@@ -305,7 +315,7 @@ class Sequence(object):
         comments = self.comments
         annotation = self.annotation[start:stop]
 
-        subseq = self.__class__(name, seq, comments, annotation)    # Create new object of same class as self
+        subseq = self.__class__(name, seq, annotation, comments)    # Create new object of same class as self
                                                                     # (don't know which sequence type we're in)
         return(subseq)
 
@@ -315,21 +325,13 @@ class Sequence(object):
         """Returns subsequence containing residues on selected positions as 
         sequence object of proper type. Indexing can start at zero or one"""
 
+        subseq = self.__class__(self.name, self.seq, 
+                                self.annotation, self.comments)    # Create new object of same class as self
+                                                                   # (don't know which sequence type we're in)
+        subseq.indexfilter(poslist)
         if namesuffix:
-            name = self.name + namesuffix
-        else:
-            name = self.name
-        seqlist = [self[i] for i in poslist]
-        seq = "".join(seqlist)
-        comments = self.comments
-        if self.annotation:
-            annotlist = [self.annotation[i] for i in poslist]
-            annotation = "".join(annotlist)
-        else:
-            annotation = ""
+            subseq.name = subseq.name + namesuffix
         
-        subseq = self.__class__(name, seq, comments, annotation)    # Create new object of same class as self
-                                                                    # (don't know which sequence type we're in)
         return(subseq)
 
     #######################################################################################
@@ -338,7 +340,7 @@ class Sequence(object):
         """Appends seq from other to end of self. Name from self is retained"""
         self.seq += other.seq
         self.annotation += other.annotation
-        self.comments += other.comments
+        self.comments += " " + other.comments
 
     #######################################################################################
 
@@ -346,7 +348,7 @@ class Sequence(object):
         """Prepends seq from other before start of self. Name from self is retained"""
         self.seq = other.seq + self.seq
         self.annotation = other.annotation + self.annotation
-        self.comments = other.comments + self.comments
+        self.comments = other.comments + " " + self.comments
 
     #######################################################################################
 
@@ -476,7 +478,7 @@ class Sequence(object):
         diffs = self.hamming(other)
         gap_indices_self = indices(self.seq, "-")
         gap_indices_other = indices(other.seq, "-")
-        n_dont_count = len(gap_indices_self | gap_indices_other)
+        n_dont_count = len(gap_indices_self ^ gap_indices_other)
 
         return diffs - n_dont_count
 
@@ -507,7 +509,7 @@ class Sequence(object):
     #######################################################################################
 
     def composition(self, ignoregaps=True):
-        """Returns dictionary with composition for single seq. {letter:freq}"""
+        """Returns dictionary with composition for single seq. {letter:(count,freq)}"""
 
         countdict = self.residuecounts()
         if ignoregaps:
@@ -521,7 +523,7 @@ class Sequence(object):
         for residue in alphabet:
             count = countdict[residue]
             freq = count/length
-            compdict[residue] = [count, freq]
+            compdict[residue] = (count, freq)
         return compdict
 
     #######################################################################################
@@ -577,17 +579,17 @@ class Sequence(object):
         """Returns gap-encoding of sequence (gap=1, nongap=0) as a string"""
 
         # Note: mostly useful in mrbayes analyses where one wants to model gap changes using binary model
-        allsymbols = str(Const.DNA_minambig) + str(Const.Protein_minambig) + str(Const.ASCII)
+        allsymbols = "".join(Const.DNA_maxambig | Const.Protein_maxambig | Const.ASCII)
         transtable = str.maketrans("-" + allsymbols, "1" + "0" * len(allsymbols))
         return self.seq.translate(transtable)
 
     #######################################################################################
 
     def tab(self, nocomments=False):
-        """Returns tab-formatted sequence as a string"""
+        """Returns tab-formatted sequence as a string: 
+            name TAB seq TAB annotation TAB comments
+            If no annotation is present, comments are placed after two TABs if present"""
 
-        # Note: Tab format is: "name TAB seq TAB annotation TAB comments"
-        # If no annotation is present, comments are placed after two TABs if present
         if (nocomments):
             tabstring = "%s\t%s\t%s" % (self.name, self.seq, self.annotation)
         else:
