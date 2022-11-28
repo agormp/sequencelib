@@ -2,5 +2,6 @@ __pycache__
 *ipynb*
 notes/
 .DS_Store
-venv
+venv*
+.venv*
 
