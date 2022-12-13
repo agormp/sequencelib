@@ -44,7 +44,7 @@ def find_seqtype(seqsample):
 
 def seqtype_attributes(seqtype):
     """Returns alphabet and ambigsymbols for given seqtype"""
-    
+
     # Python note: hack. Should rethink logic around seqtypes and refactor
     # They can be set too many places at both container and element level
     if seqtype == "DNA":
@@ -217,9 +217,9 @@ class Sequence(object):
 
         # If requested: use set arithemtic to check whether seq contains any non-alphabet characters
         if check_alphabet:
-            seqset = set(self.seq.upper())                       
-            non_alphabet = seqset - self.alphabet - set("-.")    
-            
+            seqset = set(self.seq.upper())
+            non_alphabet = seqset - self.alphabet - set("-.")
+
             if len(non_alphabet)>0:
                 raise SeqError("Unknown symbols in sequence %s: %s" % (name, list(non_alphabet)))
 
@@ -281,7 +281,7 @@ class Sequence(object):
 
     def copy_seqobject(self):
         """Customized deep copy of sequence object"""
-        
+
         seqcopy = self.__class__(self.name, self.seq, self.annotation, self.comments)
         return seqcopy
 
@@ -322,16 +322,16 @@ class Sequence(object):
     #######################################################################################
 
     def subseqpos(self, poslist, namesuffix=None):
-        """Returns subsequence containing residues on selected positions as 
+        """Returns subsequence containing residues on selected positions as
         sequence object of proper type. Indexing can start at zero or one"""
 
-        subseq = self.__class__(self.name, self.seq, 
+        subseq = self.__class__(self.name, self.seq,
                                 self.annotation, self.comments)    # Create new object of same class as self
                                                                    # (don't know which sequence type we're in)
         subseq.indexfilter(poslist)
         if namesuffix:
             subseq.name = subseq.name + namesuffix
-        
+
         return(subseq)
 
     #######################################################################################
@@ -586,7 +586,7 @@ class Sequence(object):
     #######################################################################################
 
     def tab(self, nocomments=False):
-        """Returns tab-formatted sequence as a string: 
+        """Returns tab-formatted sequence as a string:
             name TAB seq TAB annotation TAB comments
             If no annotation is present, comments are placed after two TABs if present"""
 
@@ -706,7 +706,7 @@ class Protein_sequence(Sequence):
 
 class ASCII_sequence(Sequence):
     """Class containing one sequence containing ASCII letters, and corresponding methods"""
-    
+
     # Python note: will this ever be used???
 
     def __init__(self, name, seq, annotation="", comments="", check_alphabet=False, degap=False):
@@ -1010,9 +1010,9 @@ class Sequences_base(object):
         if seqtype is None:
             self.seqtype = None
         else:
-            # Python note: seqtype perhaps should be object with separate attributes for 
+            # Python note: seqtype perhaps should be object with separate attributes for
             # seqtype, alphabet and ambigsymbols!
-            # Also: I am setting seqtype in too many different places (Sequence objects 
+            # Also: I am setting seqtype in too many different places (Sequence objects
             # for instance). Rethink and refactor!!
             self.alphabet, self.ambigsymbols = seqtype_attributes(seqtype)
 
@@ -1339,6 +1339,17 @@ class Sequences_base(object):
 
     #######################################################################################
 
+    def clean_names(self, illegal=",:;()[]", rep="_"):
+        """Change all sequence names such that chars in 'illegal' are replaced by 'rep'.
+        For instance before creating phylogenetic tree from sequences"""
+
+        translation_table = "".maketrans(illegal, rep * 7)
+        for old in self.getnames():
+            new = old.translate(translation_table)
+            self.changeseqname(old, new)
+
+    #######################################################################################
+
     def rename_numbered(self, basename, namefile=None):
         """Renames all sequences in collection to this form: basename_001, ..."""
 
@@ -1534,7 +1545,7 @@ class Seq_alignment(Sequences_base):
         self.alignment = True
         self.seqpos2alignpos_cache = {}
         self.alignpos2seqpos_cache = {}
-        self.annotation = None           
+        self.annotation = None
 
     #######################################################################################
 
