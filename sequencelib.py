@@ -1343,9 +1343,12 @@ class Sequences_base(object):
         """Change all sequence names such that chars in 'illegal' are replaced by 'rep'.
         For instance before creating phylogenetic tree from sequences"""
 
-        translation_table = "".maketrans(illegal, rep * 7)
+        illegal_esc_list = [re.escape(char) for char in illegal]
+        illegal_esc_list.append("_") # To avoid two underscores in a row
+        illegal_esc_string = "".join(illegal_esc_list)
+        regex = f"[{illegal_esc_string}]+"
         for old in self.getnames():
-            new = old.translate(translation_table)
+            new = re.sub(regex,"_",old)
             self.changeseqname(old, new)
 
     #######################################################################################
