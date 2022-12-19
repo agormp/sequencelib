@@ -1661,6 +1661,25 @@ class Seq_alignment(Sequences_base):
 
     #######################################################################################
 
+    def gappycols(self):
+        """Returns list of columns that are gappy (contain one or more gaps)"""
+        gappycols = []
+        for i, col in enumerate(self.columns()):
+            if "-" in col:
+                gappycols.append(i)
+        return gappycols
+
+    #######################################################################################
+
+    def site_summary(self):
+        """Returns tuple with summary of sites: (alignlen, n_var_cols, n_gappy_cols)"""
+        varcols = self.varcols()
+        gappycols = self.gappycols()
+        length = self.alignlen()
+        return (length, len(varcols), len(gappycols))
+
+    #######################################################################################
+
     def indexfilter(self, keeplist):
         """Discards all columns whose indices are not in keeplist"""
         for seq in self:
