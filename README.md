@@ -1,4 +1,4 @@
-# sequencelib: python library for reading, writing, and analyzing biological sequences
+# sequencelib
 
 [![PyPI downloads](https://static.pepy.tech/personalized-badge/sequencelib?period=total&units=none&left_color=black&right_color=blue&left_text=downloads&service=github)](https://pepy.tech/project/sequencelib)
 ![](https://img.shields.io/badge/version-2.12.0-blue)
