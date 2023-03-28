@@ -994,9 +994,9 @@ class Read_assembler(object):
 #############################################################################################
 
 class Sequences_base(object):
-    """Abstract baseclass for classes that contain a number of sequences - don't instantiate!"""
+    """Baseclass for classes that contain a number of sequences - don't instantiate!"""
 
-    # Implementation note: This abstract baseclass contains methods and attributes that are
+    # Implementation note: This baseclass contains methods and attributes that are
     # common to all sequence collections. Subclasses then implement methods and attributes
     # that are specific to aligned or un-aligned sequence collections.
     # This class should NOT be instantiated.
@@ -3513,10 +3513,7 @@ class Nexusfilehandle(Alignfile_reader):
                 seq = "".join(words[1:])        # join: in case sequence is divided into blocks
                 seq = seq.replace("?", "-")     # "?" sometimes used for gap or unknown in NEXUS
                 seqletters = set(seq)
-                if seqletters <= set(["0","1","\n"]):   # Only 0 and 1: this is gapencoding => do NOT remove numbers!!!
-                    seq = seq.translate(self.spacetrans)            # Remove whitespace
-                else:
-                    seq = seq.translate(self.alltrans)              # Remove whitespace and numbering
+                seq = seq.translate(self.spacetrans)            # Remove whitespace
 
                 # If name has been seen before: add next seq fragment to existing list of strings
                 if name in seqdict:
