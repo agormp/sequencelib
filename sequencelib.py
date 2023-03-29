@@ -9,6 +9,7 @@ from math import floor
 from math import sqrt
 from math import log
 from math import log10
+import math
 
 from collections import Counter
 import re
@@ -2011,9 +2012,16 @@ class Seq_alignment(Sequences_base):
             distmethod = Sequence.pdist
 
         # Online (single-pass) computation of mean and variance
+        # Also keep track of max and min
+        minpi = math.inf
+        maxpi = -math.inf
         for s1, s2 in itertools.combinations(self, 2):
             num_vals += 1.0
             dist = distmethod(s1, s2)
+            if dist < minpi:
+                minpi = dist
+            if dist > maxpi:
+                maxpi = dist
             diff = dist - mean_prev
             mean_cur = mean_prev + diff / num_vals
             var_cur = var_prev + diff * (dist - mean_cur)
@@ -2023,7 +2031,7 @@ class Seq_alignment(Sequences_base):
         # NOTE: need to doublecheck this:
         variance = var_cur / (num_vals)
         std = sqrt(variance)
-        return (mean_cur, std)
+        return (mean_cur, std, minpi, maxpi)
 
     #######################################################################################
 
