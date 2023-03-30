@@ -57,6 +57,12 @@ class Test_find_seqtype:
         assert sq.find_seqtype(list(ASCII_string)) == "ASCII"
         assert sq.find_seqtype(set(ASCII_string)) == "ASCII"
 
+    def test_Standard(self):
+        Standard_string = "".join(random.choices(list(sq.Const.Standard), k=self.seqlen))
+        assert sq.find_seqtype(Standard_string) == "standard"
+        assert sq.find_seqtype(list(Standard_string)) == "standard"
+        assert sq.find_seqtype(set(Standard_string)) == "standard"
+
     def test_unrecognized_raises(self):
         ASCII_string = "".join(random.choices(list(sq.Const.ASCII), k=self.seqlen))
         unknown = ASCII_string + "ØÆÅ=)&%#"
@@ -78,6 +84,10 @@ class Test_seqtype_attributes:
     def test_ASCII(self):
         assert (sq.seqtype_attributes("ASCII")
                 == (set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ,._"), set()))
+
+    def test_Standard(self):
+        assert (sq.seqtype_attributes("standard")
+                == (set("0123456789"), set()))
 
     def test_unknown_raises(self):
         with pytest.raises(sq.SeqError, match = r"Unknown sequence type: normannisk"):
