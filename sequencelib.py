@@ -32,7 +32,9 @@ def find_seqtype(seqsample):
     # Note: for small sequences it can occur that Protein seq contains only DNA_maxambig symbols
     # Perhaps look at frequencies instead? Other approaches?
     letters = set(seqsample) - set("-")   # Accepts most input types (list, string, set)
-    if letters <= Const.DNA_maxambig:
+    if letters <= Const.Standard:
+        return "standard"
+    elif letters <= Const.DNA_maxambig:
         return "DNA"
     elif letters <= Const.Protein_maxambig:
         return "protein"
@@ -48,7 +50,9 @@ def seqtype_attributes(seqtype):
 
     # Python note: hack. Should rethink logic around seqtypes and refactor
     # They can be set too many places at both container and element level
-    if seqtype == "DNA":
+    if seqtype == "standard":
+        return (Const.Standard, set())
+    elif seqtype == "DNA":
         return (Const.DNA_maxambig, Const.DNA_maxambig - Const.DNA)
     elif seqtype == "protein":
         return (Const.Protein_maxambig, Const.Protein_maxambig - Const.Protein)
@@ -187,6 +191,7 @@ class Const(object):
     """Global constants used by seqlib"""
 
     # Alphabets
+    Standard = set("0123456789")
     DNA = set("ACGT")
     DNA_minambig = set("ACGTN")
     DNA_typicalambig = set("ACGTYRN")
@@ -724,6 +729,18 @@ class ASCII_sequence(Sequence):
         shufseq = Sequence.shuffle(self)
         name = self.name + "_shuffled"
         return ASCII_sequence(name, shufseq)
+
+#############################################################################################
+#############################################################################################
+
+class Standard_sequence(Sequence):
+    """Sequence containing standard data-type (e.g., morphological)"""
+
+    def __init__(self, name, seq, annotation="", comments="", check_alphabet=False, degap=False):
+        self.seqtype="standard"
+        self.alphabet = Const.Standard
+        self.ambigsymbols = set()       # Empty set. Attribute used by some functions. Change?
+        Sequence.__init__(self, name, seq, annotation, comments, check_alphabet, degap)
 
 #############################################################################################
 #############################################################################################
