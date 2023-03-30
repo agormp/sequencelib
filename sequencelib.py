@@ -2816,7 +2816,7 @@ class Seq_alignment(Sequences_base):
 #############################################################################################
 
 class Seqfile_reader(object):
-    """Abstract baseclass for sequence file readers"""
+    """Baseclass for sequence file readers. Don't instantiate"""
 
     def __init__(self, filename, seqtype, check_alphabet, degap, nameishandle):
 
@@ -2855,16 +2855,8 @@ class Seqfile_reader(object):
         seq = seq.upper()
         if self.seqtype == "autodetect":
             self.seqtype = find_seqtype(seq)
-            if self.seqtype == "DNA":
-                return DNA_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
-            elif self.seqtype ==  "protein":
-                return Protein_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
-            elif self.seqtype == "ASCII":
-                return ASCII_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
-            else:
-                unknown_symbols = list(seqletters - Const.ASCII)
-                msg = "Unknown symbols encountered during seqtype autodetection: {}".format(unknown_symbols)
-                raise SeqError(msg)
+        if self.seqtype == "standard":
+            return Standard_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
         elif self.seqtype == "DNA":
             return DNA_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
         elif self.seqtype == "protein":
@@ -3330,7 +3322,9 @@ class Alignfile_reader(object):
         seq = seq.upper()
         if self.seqtype == "autodetect":
             self.seqtype = find_seqtype(seq)
-            if self.seqtype == "DNA":
+            if self.seqtype == "standard":
+                return Standard_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
+            elif self.seqtype == "DNA":
                 return DNA_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
             elif self.seqtype ==  "protein":
                 return Protein_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
@@ -3340,6 +3334,8 @@ class Alignfile_reader(object):
                 unknown_symbols = list(seqletters - Const.ASCII)
                 msg = "Unknown symbols encountered during seqtype autodetection: {}".format(unknown_symbols)
                 raise SeqError(msg)
+        elif self.seqtype == "standard":
+            return Standard_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
         elif self.seqtype == "DNA":
             return DNA_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
         elif self.seqtype == "protein":
