@@ -1294,35 +1294,35 @@ class Sequences_base(object):
 
         # Removes all duplicate sequences (keeping one of each type).
         # Returns lists of identical sequences (first one in list is the one that is kept)
+        grouplist = self.group_identical_seqs()
 
-        # Keep track of sets of identical sequences using list and dict:
-        # simlist: list containing lists of identical sequence names
-        # indexdict: keys are seqnames, value is index in simlist where name occurs
-        simlist = []
-        indexdict = {}
-        for seq1, seq2 in itertools.combinations(self, 2):
-            if seq1 == seq2:
-                if seq1.name in indexdict and seq2.name not in indexdict:
-                    listno = indexdict[seq1.name]
-                    simlist[listno].append(seq2.name)
-                    indexdict[seq2.name] = listno
-                elif seq2.name in indexdict and seq1.name not in indexdict:
-                    listno = indexdict[seq2.name]
-                    simlist[listno].append(seq1.name)
-                    indexdict[seq1.name] = listno
-                elif seq1.name not in indexdict and seq2.name not in indexdict:
-                    simlist.append([seq1.name, seq2.name])
-                    newindex = len(simlist) - 1
-                    indexdict[seq1.name] = newindex
-                    indexdict[seq2.name] = newindex
-
-        # Remove duplicates (i.e, last seqs in all simlist lists):
-        for namelist in simlist:
-            for dupname in namelist[1:]:
-                self.remseq(dupname)
+        # Remove duplicates (i.e, last seqs in all lists):
+        duplist = []
+        for namelist in grouplist:
+            if len(namelist) > 1:
+                duplist.append(namelist)
+                for dupname in namelist[1:]:
+                    self.remseq(dupname)
 
         # Return list of lists of duplicates (first one in each list was kept)
-        return simlist
+        return duplist
+
+    #######################################################################################
+
+    def group_identical_seqs(self):
+        """Return list of lists of names for each unique sequence: [[s1], [s2,s3], [s4]]"""
+
+        # Python note: the dict keys are hashed, so using sequence as key and
+        # testing "seq in dict" automatically compares sequences, but O(n) not O(n^2)
+        groups = {}
+        for sequence in self:
+            if sequence.seq not in groups:
+                groups[sequence.seq] = [sequence.name]
+            else:
+                groups[sequence.seq].append(sequence.name)
+
+        grouplist = list(groups.values())
+        return grouplist
 
     #######################################################################################
 
@@ -3965,14 +3965,14 @@ class vcf(object):
 #    print "Time used: %.2f" % tim
 
 def main():
-    pass
-    # sf = Seqfile("/Users/agpe/Desktop/dupseqs.fasta")
-    # al = sf.read_alignment()
-    # print("before remove")
-    # print(len(al))
-    # al.removedupseqs()
-    # print("after remove")
-    # print(len(al))
+    # pass
+    sf = Seqfile("/Users/agpe/Desktop/dupseqs.fasta")
+    al = sf.read_alignment()
+    print("before remove")
+    print(len(al))
+    al.removedupseqs()
+    print("after remove")
+    print(len(al))
 
 if __name__ == "__main__":
     main()
