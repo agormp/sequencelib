@@ -233,9 +233,8 @@ class Test_eq_DNA:
 
     def test_identical_withgaps(self):
         seq1 = "".join(random.choices("acgtn-", k=self.seqlen))
-        seq2 = seq1.replace("-","")
         dnaseq1 = sq.DNA_sequence("s1", seq1)
-        dnaseq2 = sq.DNA_sequence("s2", seq2)
+        dnaseq2 = sq.DNA_sequence("s2", seq1)
         assert dnaseq1 == dnaseq2
 
     def test_different(self):
