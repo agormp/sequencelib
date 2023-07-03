@@ -3976,3 +3976,22 @@ class vcf(object):
 ##    >>> import pstats
 ##    >>> p = pstats.Stats('mainprofile')
 ##    >>> p.sort_stats('time').print_stats(20)
+
+
+def main():
+    # pass
+    sf = Seqfile("/Users/agpe/Desktop/dupseqs.fasta")
+    al = sf.read_alignment()
+    print("before remove")
+    print(len(al))
+    al.removedupseqs()
+    print("after remove")
+    print(len(al))
+
+if __name__ == "__main__":
+    main()
+    # import cProfile
+    # cProfile.run('main()', 'tmp/profile.pstats')
+
+
+
