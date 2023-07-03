@@ -234,9 +234,8 @@ class Sequence(object):
     def __eq__(self, other):
         """Implements equality check between sequences"""
 
-        # Note: Here I take two sequences to be identical if they have same gapfree seq (name is ignored)
-
-        if self.seq.replace("-", "") == other.seq.replace("-", ""):
+        # Note: should gaps be removed? currently ignoring (and much faster to do so)
+        if self.seq == other.seq:
             return True
         else:
             return False
@@ -247,7 +246,7 @@ class Sequence(object):
         """Implements inequality checking between sequences"""
 
         # Python note: __eq__ does not cover use of != operator, so this has to be explicitly implemented
-        if self.seq.replace("-", "") != other.seq.replace("-", ""):
+        if self.seq != other.seq:
             return True
         else:
             return False
@@ -3965,14 +3964,19 @@ class vcf(object):
 #    tim = time.time()-start
 #    print "Time used: %.2f" % tim
 
-# if __name__ == "__main__":
+def main():
+    pass
+    # sf = Seqfile("/Users/agpe/Desktop/dupseqs.fasta")
+    # al = sf.read_alignment()
+    # print("before remove")
+    # print(len(al))
+    # al.removedupseqs()
+    # print("after remove")
+    # print(len(al))
 
-    # main()
-
+if __name__ == "__main__":
+    main()
     # import cProfile
-    # cProfile.run('main()', 'mainprofile')
-##
-##    In separate window do:
-##    >>> import pstats
-##    >>> p = pstats.Stats('mainprofile')
-##    >>> p.sort_stats('time').print_stats(20)
+    # cProfile.run('main()', 'tmp/profile.pstats')
+
+
