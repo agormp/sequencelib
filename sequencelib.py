@@ -1781,6 +1781,36 @@ class Seq_alignment(Sequences_base):
 
     #######################################################################################
 
+    def endgapfraclist(self):
+        """Returns list giving, for each column, the fraction of sequences having endgaps.
+        Endgaps: contiguous gappy region starting at either end of alignment"""
+
+        endgapfrac = [0.0] * self.alignlen()
+        for seq in self:
+            i = 0
+            while seq[i] == "-":
+                endgapfrac[i] += 1
+                i += 1
+            i = -1
+            while seq[i] == "-":
+                endgapfrac[i] += 1
+                i -= 1
+        nseq = len(self)
+        endgapfrac = [ count/nseq for count in endgapfrac]
+        return endgapfrac
+
+    #######################################################################################
+
+    def remendgapcol(self, frac=0.5):
+        """Removes columns from both ends of alignment where > frac fraction of sequences
+        have endgaps (contiguous gappy region starting at either end of alignment)"""
+
+        endgapfrac = self.endgapfraclist()
+        remlist = [i for i in range(len(endgapfrac)) if endgapfrac[i]>=frac]
+        self.remcols(remlist)
+
+    #######################################################################################
+
     def remconscol(self):
         """Removes columns where all symbols are identical (conserved columns)"""
         conscols = self.conscols()
