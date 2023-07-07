@@ -343,6 +343,10 @@ class Sequence(object):
 
     def appendseq(self, other):
         """Appends seq from other to end of self. Name from self is retained"""
+
+        # Python note: should deal with case where seqtypes are different
+        # Optimally: use mixed type as in mrbayes and keep track of regions
+
         self.seq += other.seq
         self.annotation += other.annotation
         self.comments += " " + other.comments
@@ -533,7 +537,7 @@ class Sequence(object):
 
     #######################################################################################
 
-    def gaplist(self):
+    def findgaps(self):
         """Returns list of tuples giving (start,stop) indices for any gaps in sequence"""
 
         indices = []
@@ -1041,7 +1045,7 @@ class Sequences_base(object):
 
     #######################################################################################
 
-    def __init__(self, name=None, seqtype=None):
+    def __init__(self, name="sequences", seqtype=None):
         self.name = name            # Label for set of sequences
         self.seqdict = {}           # seqdict format: {seqname:seqobject, ...}
         self.seqnamelist = []       # seqnamelist format: [name1, name2, ...]
@@ -1581,7 +1585,7 @@ class Seq_alignment(Sequences_base):
 
     #######################################################################################
 
-    def __init__(self, name=None, seqtype=None):
+    def __init__(self, name="alignment", seqtype=None):
         Sequences_base.__init__(self, name=name, seqtype=None)
         self.alignment = True
         self.seqpos2alignpos_cache = {}
@@ -1594,21 +1598,26 @@ class Seq_alignment(Sequences_base):
         """Add Sequence object to alignment"""
         # Overrides baseclass function. Sets partition info + ensures consistent sequencelengths
         if len(self) == 0:
-            self.partitions = [(self.name, 0, len(seq))]  # List of (name, partition-start, partition-length) tuples
+            Sequences_base.addseq(self, seq, silently_discard_dup_name)
+            self.partitions = [(self.name, 0, len(seq), self.seqtype)]  # List of (name, partition-start, partition-length, seqtype) tuples
         else:
             if len(seq) != len(self[0]):
                 raise SeqError("Not an alignment: these sequences have different lengths: %s and %s" % (seq.name, self[0].name))
-
-        # If length was OK, add sequence by calling baseclass method
-        Sequences_base.addseq(self, seq, silently_discard_dup_name)
+            else:
+                Sequences_base.addseq(self, seq, silently_discard_dup_name)
 
     #######################################################################################
 
     def appendalignment(self, other):
         """Appends sequences in 'other' to the end of similarly named sequences in 'self'"""
 
+
+        # If different seqtype: update Seq_alignment seqtype to mixed.
+        if other.seqtype != self.seqtype:
+            self.seqtype = "mixed"
+
         # Update partition info in self
-        partitiontuple = (other.name, self.alignlen(), other.alignlen())    # (name, partition-start, partition-length)
+        partitiontuple = (other.name, self.alignlen(), other.alignlen(), other.seqtype)    # (name, partition-start, partition-length, seqtype)
         if len(self) == 0:
             self.partitions = [partitiontuple]  # List of (name, partition-start, partition-length) tuples
         else:
@@ -1861,8 +1870,11 @@ class Seq_alignment(Sequences_base):
     def remendgapseqs(self, cutoff=None):
         """Remove sequences with endgaps longer than cutoff"""
 
+        # Python note: individual seq should have responsibility for finding its endgaps
+
         if cutoff is None:
-            raise SeqError("Must provide cutoff (maximum accepted endgap length) for remendgapseqs()")
+            msg = "Must provide cutoff (maximum accepted endgap length) for remendgapseqs()"
+            raise SeqError(msg)
         remlist = []
         for seq in self:
             maxlen = 0
@@ -1876,6 +1888,39 @@ class Seq_alignment(Sequences_base):
             if maxlen > cutoff:
                 remlist.append(seq.name)
         self.remseqs(remlist)
+
+    #######################################################################################
+
+    def findgaps(self):
+        """Returns list of (start, stop) index-tuples for gaps found across sequences"""
+
+        gapset = set()
+        for seq in self:
+            gapset.update(set(seq.findgaps()))
+        gaplist = list(gapset)
+        gaplist.sort()
+        return gaplist
+
+    #######################################################################################
+
+    def gap_encode(self):
+        """Return Seq_alignment object with binary (Standard-type) seqs
+        encoding all gaps in alignment"""
+
+        gaplist = self.findgaps()
+        gap_alignment = Seq_alignment(name="gap_encoding")
+        for seq in self:
+            seqgaps = seq.findgaps()
+            gapstringlist = []
+            for gap in gaplist:
+                if gap in seqgaps:
+                    gapstringlist.append("1")
+                else:
+                    gapstringlist.append("0")
+            gapstring = "".join(gapstringlist)
+            gapseq = Standard_sequence(seq.name, gapstring)
+            gap_alignment.addseq(gapseq)
+        return gap_alignment
 
     #######################################################################################
 
@@ -2349,8 +2394,23 @@ class Seq_alignment(Sequences_base):
 
         alignlen = self.alignlen()
         numseq = len(self)
-        seqtype = self.seqtype.lower()
         alphabet = "".join(sorted(list(self.alphabet)))
+        seqtype = self.seqtype.lower()
+
+        # Special treatment if mixed seqtype. This is MrBayes syntax. May not work for other software
+        if seqtype == "mixed":
+            seqtypelist = ["mixed("]
+            for (name, start, partlen, parttype) in self.partitions:
+                seqtypelist.append(parttype)
+                seqtypelist.append(":")
+                seqtypelist.append(f"{start + 1}")
+                if partlen > 1:
+                    seqtypelist.append("-")
+                    seqtypelist.append(f"{start + partlen}")
+                seqtypelist.append(",")
+            del seqtypelist[-1]        # Added one comma too many
+            seqtypelist.append(")")
+            seqtype = "".join(seqtypelist)
 
         # Find longest name (NOTE: could also check this during construction of alignment)
         lenlist = [len(seq.name) for seq in self]
