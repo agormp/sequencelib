@@ -1837,6 +1837,27 @@ class Seq_alignment(Sequences_base):
 
     #######################################################################################
 
+    def remendgapseqs(self, cutoff=None):
+        """Remove sequences with endgaps longer than cutoff"""
+
+        if cutoff is None:
+            raise SeqError("Must provide cutoff (maximum accepted endgap length) for remendgapseqs()")
+        remlist = []
+        for seq in self:
+            maxlen = 0
+            for i,step in [(0,1),(-1,-1)]:
+                endgaplen = 0
+                while seq[i] == "-":
+                    endgaplen += 1
+                    i += step
+                if endgaplen > maxlen:
+                    maxlen = endgaplen
+            if maxlen > cutoff:
+                remlist.append(seq.name)
+        self.remseqs(remlist)
+
+    #######################################################################################
+
     def align_seq_pos_cache_builder(self, seqname):
         """Helper function for seqpos2alignpos and alignpos2seqpos: Builds mapping caches for given seq"""
 
