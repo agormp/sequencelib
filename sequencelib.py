@@ -533,6 +533,27 @@ class Sequence(object):
 
     #######################################################################################
 
+    def gaplist(self):
+        """Returns list of tuples giving (start,stop) indices for any gaps in sequence"""
+
+        indices = []
+        ingap = False
+        for i in range(len(self.seq)):
+            if self.seq[i] == '-' and not ingap:
+                start = i
+                ingap = True
+            elif self.seq[i] != '-' and ingap:
+                stop = i - 1
+                indices.append((start,stop))
+                ingap = False
+        if self.seq[-1] == "-":
+            stop = i
+            indices.append((start,stop))
+
+        return indices
+
+    #######################################################################################
+
     def fasta(self, width=60, nocomments=False):
         """Return fasta-formatted sequence as a string"""
 
