@@ -205,6 +205,7 @@ class Const(object):
     Protein_minambig = set("ACDEFGHIKLMNPQRSTVWYX")
     Protein_maxambig = set("ACDEFGHIKLMNPQRSTVWYBZX")
     ASCII = set(string.ascii_uppercase + string.digits + " ,._")
+    Mixed = DNA_maxambig | Protein_maxambig | Standard
 
 #############################################################################################
 #############################################################################################
@@ -347,22 +348,33 @@ class Sequence(object):
     #######################################################################################
 
     def appendseq(self, other):
-        """Appends seq from other to end of self. Name from self is retained"""
+        """Appends seq from other to end of self. Returns as new Sequence object.
+        Name from self is retained"""
 
-        # Python note: should deal with case where seqtypes are different
-        # Optimally: use mixed type as in mrbayes and keep track of regions
-
-        self.seq += other.seq
-        self.annotation += other.annotation
-        self.comments += " " + other.comments
+        newseq = self.seq + other.seq
+        newannot = self.annotation + other.annotation
+        if self.comments and other.comments:
+            newcomment = self.comments + " " + other.comments
+        else:
+            newcomment = self.comments + other.comments
+        if self.seqtype == other.seqtype:
+            return self.__class__(self.name, newseq, newannot, newcomment)
+        else:
+            return Mixed_sequence(self.name, newseq, newannot, newcomment)
 
     #######################################################################################
 
     def prependseq(self, other):
-        """Prepends seq from other before start of self. Name from self is retained"""
-        self.seq = other.seq + self.seq
-        self.annotation = other.annotation + self.annotation
-        self.comments = other.comments + " " + self.comments
+        """Prepends seq from other before start of self. Returns as new Sequence object.
+        Name from self is retained"""
+
+        newseq = other.seq + self.seq
+        newannot = other.annotation + self.annotation
+        newcomment = other.comments + " " + self.comments
+        if self.seqtype == other.seqtype:
+            return self.__class__(self.name, newseq, newannot, newcomment)
+        else:
+            return Mixed_sequence(self.name, newseq, newannot, newcomment)
 
     #######################################################################################
 
@@ -786,6 +798,24 @@ class Standard_sequence(Sequence):
 #############################################################################################
 #############################################################################################
 
+class Mixed_sequence(Sequence):
+    """Sequence containing mix of different sequence types (e.g., restriction and DNA)"""
+
+    # Python note: I am not keeping track of original sequence types in Sequence objects
+    # This information is available only in Seq_alignment objects. Rethink approach?
+    # It means I no longer have access to type-specific methods such as translation
+
+    # Python note: perhaps better to rethink seqtypes and to have collection of seqs in seq?
+
+    def __init__(self, name, seq, annotation="", comments="", check_alphabet=False, degap=False):
+        self.seqtype="mixed"
+        self.alphabet = Const.Mixed
+        self.ambigsymbols = self.alphabet - Const.Protein - Const.DNA - Const.Mixed
+        Sequence.__init__(self, name, seq, annotation, comments, check_alphabet, degap)
+
+#############################################################################################
+#############################################################################################
+
 class Contig(object):
     """Class corresponding to contig, i.e. assembly of several reads (sequences).
     Has methods for checking Contig overlap, assembly, etc."""
@@ -867,6 +897,9 @@ class Contig(object):
     def merge(self, other, overlap):
         """Merges Contig object with other Contig given overlap info from findoverlap.
            Keeps track of positions of all reads from both Contigs"""
+
+        # Python note: BROKEN!!! appendseq and prependseq are no longer in-place but returns new
+        # Sequence object. Chacnge code accordingly!!!
 
         # "overlap" is result tuple from .findoverlap method
         # b == 0: a is more upstream, so assembly starts with a (vice versa for a == 0)
@@ -1648,7 +1681,7 @@ class Seq_alignment(Sequences_base):
         if len(self) == 0:
             raise SeqError("Can't append alignment to empty Seq_alignment object")
 
-        # If different seqtype: update Seq_alignment seqtype to mixed.
+        # If different seqtype: return new Seq_alignment with mixed seqtype. Else retain type
         if other.seqtype != self.seqtype:
             self.seqtype = "mixed"
 
