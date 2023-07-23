@@ -1693,13 +1693,13 @@ class Seq_alignment(Sequences_base):
             self.partitions.append(partitiontuple)
 
         # Match each sequence in self to other
-        for seq in self:
+        for i,seq in enumerate(self):
             try:
                 matchingseq = other.getseq(seq.name)
             except SeqError:
                 # Re-throw exception with more precise description of problem (we know more than just that name was not found)
                 raise SeqError("Sequences in files have different names. No match found for %s" % seq.name)
-            seq.appendseq(matchingseq)
+            self[i] = seq.appendseq(matchingseq)
 
     #######################################################################################
 
