@@ -1110,6 +1110,23 @@ class Sequences_base(object):
 
     #######################################################################################
 
+    def __setitem__(self, index, value):
+        """Implements setting Sequence objects in seqlist using integer indices."""
+
+        # Python note: maybe also implement for slices etc. Rethink getitem in process
+
+        if isinstance(index, int):
+            # Make sure the value is a Sequence object.
+            if not isinstance(value, Sequence):
+                raise ValueError("Assigned value must be a Sequence object")
+            else:
+                self.seqdict[self.seqnamelist[index]] = value
+
+        else:
+            raise SeqError("A set of sequences must be set using an integer index")
+
+    #######################################################################################
+
     def __eq__(self, other):
         """Implements equality check between sequence collections"""
 
