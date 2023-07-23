@@ -32,7 +32,9 @@ def find_seqtype(seqsample):
     # Note: for small sequences it can occur that Protein seq contains only DNA_maxambig symbols
     # Perhaps look at frequencies instead? Other approaches?
     letters = set(seqsample) - set("-")   # Accepts most input types (list, string, set)
-    if letters <= Const.Standard:
+    if letters <= Const.Restriction:
+        return "restriction"
+    elif letters <= Const.Standard:
         return "standard"
     elif letters <= Const.DNA_maxambig:
         return "DNA"
@@ -50,7 +52,9 @@ def seqtype_attributes(seqtype):
 
     # Python note: hack. Should rethink logic around seqtypes and refactor
     # They can be set too many places at both container and element level
-    if seqtype == "standard":
+    if seqtype == "restriction":
+        return (Const.Restriction, set())
+    elif seqtype == "standard":
         return (Const.Standard, set())
     elif seqtype == "DNA":
         return (Const.DNA_maxambig, Const.DNA_maxambig - Const.DNA)
@@ -191,6 +195,7 @@ class Const(object):
     """Global constants used by seqlib"""
 
     # Alphabets
+    Restriction = set("01")
     Standard = set("0123456789")
     DNA = set("ACGT")
     DNA_minambig = set("ACGTN")
@@ -753,6 +758,18 @@ class ASCII_sequence(Sequence):
         shufseq = Sequence.shuffle(self)
         name = self.name + "_shuffled"
         return ASCII_sequence(name, shufseq)
+
+#############################################################################################
+#############################################################################################
+
+class Restriction_sequence(Sequence):
+    """Sequence containing restriction data-type (presence/absence - e.g. gaps)"""
+
+    def __init__(self, name, seq, annotation="", comments="", check_alphabet=False, degap=False):
+        self.seqtype="restriction"
+        self.alphabet = Const.Restriction
+        self.ambigsymbols = set()       # Empty set. Attribute used by some functions. Change?
+        Sequence.__init__(self, name, seq, annotation, comments, check_alphabet, degap)
 
 #############################################################################################
 #############################################################################################
@@ -1611,6 +1628,8 @@ class Seq_alignment(Sequences_base):
     def appendalignment(self, other):
         """Appends sequences in 'other' to the end of similarly named sequences in 'self'"""
 
+        if len(self) == 0:
+            raise SeqError("Can't append alignment to empty Seq_alignment object")
 
         # If different seqtype: update Seq_alignment seqtype to mixed.
         if other.seqtype != self.seqtype:
@@ -1623,18 +1642,14 @@ class Seq_alignment(Sequences_base):
         else:
             self.partitions.append(partitiontuple)
 
-        # If alignment object is empty: Initialise with other
-        if len(self) == 0:
-            self.addseqset(other)
-        # Else: match sequences, appending end to end
-        else:
-            for seq in self:
-                try:
-                    matchingseq = other.getseq(seq.name)
-                except SeqError:
-                    # Re-throw exception with more precise description of problem (we know more than just that name was not found)
-                    raise SeqError("Sequences in files have different names. No match found for %s" % seq.name)
-                seq.appendseq(matchingseq)
+        # Match each sequence in self to other
+        for seq in self:
+            try:
+                matchingseq = other.getseq(seq.name)
+            except SeqError:
+                # Re-throw exception with more precise description of problem (we know more than just that name was not found)
+                raise SeqError("Sequences in files have different names. No match found for %s" % seq.name)
+            seq.appendseq(matchingseq)
 
     #######################################################################################
 
@@ -1904,8 +1919,10 @@ class Seq_alignment(Sequences_base):
     #######################################################################################
 
     def gap_encode(self):
-        """Return Seq_alignment object with binary (Standard-type) seqs
+        """Return Seq_alignment object with binary (Restriction-type) seqs
         encoding all gaps in alignment"""
+
+        # Python note: need more methods in addition to simple (missing for nested gaps eg). Add as options or extra methods?
 
         gaplist = self.findgaps()
         gap_alignment = Seq_alignment(name="gap_encoding")
@@ -1918,7 +1935,7 @@ class Seq_alignment(Sequences_base):
                 else:
                     gapstringlist.append("0")
             gapstring = "".join(gapstringlist)
-            gapseq = Standard_sequence(seq.name, gapstring)
+            gapseq = Restriction_sequence(seq.name, gapstring)
             gap_alignment.addseq(gapseq)
         return gap_alignment
 
@@ -2444,6 +2461,9 @@ class Seq_alignment(Sequences_base):
 
     def nexusgap(self, width=60):
         """Returns nexus-formatted alignment with binary gap encoding, mixed mrbayes format, as string"""
+
+        # Python note: I updated nexus() function so maybe thisis no longer needed.
+        # Python note: actually this is stupid encoding, one char at a time, not gap regions
 
         alignlen = self.alignlen()
         numseq = len(self)
@@ -2986,6 +3006,8 @@ class Seqfile_reader(object):
         seq = seq.upper()
         if self.seqtype == "autodetect":
             self.seqtype = find_seqtype(seq)
+        if self.seqtype == "restriction":
+            return Restriction_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
         if self.seqtype == "standard":
             return Standard_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
         elif self.seqtype == "DNA":
@@ -3453,7 +3475,9 @@ class Alignfile_reader(object):
         seq = seq.upper()
         if self.seqtype == "autodetect":
             self.seqtype = find_seqtype(seq)
-            if self.seqtype == "standard":
+            if self.seqtype == "restriction":
+                return Restriction_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
+            elif self.seqtype == "standard":
                 return Standard_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
             elif self.seqtype == "DNA":
                 return DNA_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
@@ -3465,6 +3489,8 @@ class Alignfile_reader(object):
                 unknown_symbols = list(seqletters - Const.ASCII)
                 msg = "Unknown symbols encountered during seqtype autodetection: {}".format(unknown_symbols)
                 raise SeqError(msg)
+        if self.seqtype == "restriction":
+            return Restriction_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
         elif self.seqtype == "standard":
             return Standard_sequence(name, seq, annotation, comments, self.check_alphabet, self.degap)
         elif self.seqtype == "DNA":
