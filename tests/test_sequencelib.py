@@ -400,11 +400,11 @@ class Test_appendseq_DNA:
         com2 = "Second gene"
         dnaseq1 = sq.DNA_sequence(name1, seq1, annot1, com1)
         dnaseq2 = sq.DNA_sequence(name2, seq2, annot2, com2)
-        dnaseq1.appendseq(dnaseq2)
-        assert dnaseq1.name == name1
-        assert dnaseq1.seq == seq1 + seq2
-        assert dnaseq1.annotation == annot1 + annot2
-        assert dnaseq1.comments == com1 + " " + com2
+        dnaseq3 = dnaseq1.appendseq(dnaseq2)
+        assert dnaseq3.name == name1
+        assert dnaseq3.seq == seq1 + seq2
+        assert dnaseq3.annotation == annot1 + annot2
+        assert dnaseq3.comments == com1 + " " + com2
 
 ###################################################################################################
 
@@ -423,11 +423,11 @@ class Test_prependseq_DNA:
         com2 = "Second gene"
         dnaseq1 = sq.DNA_sequence(name1, seq1, annot1, com1)
         dnaseq2 = sq.DNA_sequence(name2, seq2, annot2, com2)
-        dnaseq1.prependseq(dnaseq2)
-        assert dnaseq1.name == name1
-        assert dnaseq1.seq == seq2 + seq1
-        assert dnaseq1.annotation == annot2 + annot1
-        assert dnaseq1.comments == com2 + " " + com1
+        dnaseq3 = dnaseq1.prependseq(dnaseq2)
+        assert dnaseq3.name == name1
+        assert dnaseq3.seq == seq2 + seq1
+        assert dnaseq3.annotation == annot2 + annot1
+        assert dnaseq3.comments == com2 + " " + com1
 
 ###################################################################################################
 
