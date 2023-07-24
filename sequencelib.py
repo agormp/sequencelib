@@ -1707,25 +1707,29 @@ class Seq_alignment(Sequences_base):
         if len(self) == 0:
             raise SeqError("Can't append alignment to empty Seq_alignment object")
 
+        alcopy = self.copy_alignobject()
+
         # If different seqtype: return new Seq_alignment with mixed seqtype. Else retain type
-        if other.seqtype != self.seqtype:
-            self.seqtype = "mixed"
+        if other.seqtype != alcopy.seqtype:
+            alcopy.seqtype = "mixed"
 
-        # Update partition info in self
-        partitiontuple = (other.name, self.alignlen(), other.alignlen(), other.seqtype)    # (name, partition-start, partition-length, seqtype)
-        if len(self) == 0:
-            self.partitions = [partitiontuple]  # List of (name, partition-start, partition-length) tuples
+        # Update partition info in alcopy
+        partitiontuple = (other.name, alcopy.alignlen(), other.alignlen(), other.seqtype)    # (name, partition-start, partition-length, seqtype)
+        if len(alcopy) == 0:   # Python note: will this ever happen?? Empty alignment??
+            alcopy.partitions = [partitiontuple]  # List of (name, partition-start, partition-length) tuples
         else:
-            self.partitions.append(partitiontuple)
+            alcopy.partitions.append(partitiontuple)
 
-        # Match each sequence in self to other
-        for i,seq in enumerate(self):
+        # Match each sequence in alcopy to other
+        for i,seq in enumerate(alcopy):
             try:
                 matchingseq = other.getseq(seq.name)
             except SeqError:
                 # Re-throw exception with more precise description of problem (we know more than just that name was not found)
                 raise SeqError("Sequences in files have different names. No match found for %s" % seq.name)
-            self[i] = seq.appendseq(matchingseq)
+            alcopy[i] = seq.appendseq(matchingseq)
+
+        return alcopy
 
     #######################################################################################
 
