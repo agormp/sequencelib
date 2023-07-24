@@ -1650,11 +1650,40 @@ class Seq_alignment(Sequences_base):
     #######################################################################################
 
     def __init__(self, name="alignment", seqtype=None):
+
+        # Attributes set in baseclass:
+        # self.name
+        # self.seqdict
+        # self.seqnamelist
+        # self.seqtype
+        # self.alphabet
+        # self.ambigsymbols
+
         Sequences_base.__init__(self, name=name, seqtype=None)
         self.alignment = True
         self.seqpos2alignpos_cache = {}
         self.alignpos2seqpos_cache = {}
         self.annotation = None
+        self.partitions = None  # Set when adding sequences and appending alignments
+
+    ###############################################################################################
+
+    def copy_alignobject(self):
+        """Returns copy of Seq_alignment object. Copies standard attributes.
+        Any user-added attributes are not copied. Similar to effect of copy.deepcopy"""
+
+        obj = Seq_alignment(name=self.name, seqtype=self.seqtype)
+        obj.seqdict = self.seqdict.copy()
+        obj.seqnamelist = self.seqnamelist.copy()
+        obj.alphabet = self.alphabet.copy()
+        obj.ambigsymbols = self.ambigsymbols.copy()
+        obj.alignment = True
+        obj.seqpos2alignpos_cache = {}    # Python note: change to lazy evaluation? keep better track of this
+        obj.alignpos2seqpos_cache = {}
+        obj.annotation = self.annotation  # string
+        obj.partitions = self.partitions  # tuple of immutable objects (strings and ints)
+
+        return obj
 
     #######################################################################################
 
