@@ -1099,13 +1099,10 @@ class Sequences_base(object):
         self.name = name            # Label for set of sequences
         self.seqdict = {}           # seqdict format: {seqname:seqobject, ...}
         self.seqnamelist = []       # seqnamelist format: [name1, name2, ...]
+        self.seqtype = seqtype
         if seqtype is None:
-            self.seqtype = None
+            self.alphabet, self.ambigsymbols = None, None
         else:
-            # Python note: seqtype perhaps should be object with separate attributes for
-            # seqtype, alphabet and ambigsymbols!
-            # Also: I am setting seqtype in too many different places (Sequence objects
-            # for instance). Rethink and refactor!!
             self.alphabet, self.ambigsymbols = seqtype_attributes(seqtype)
 
     #######################################################################################
