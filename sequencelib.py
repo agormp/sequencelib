@@ -1659,7 +1659,7 @@ class Seq_alignment(Sequences_base):
         # self.alphabet
         # self.ambigsymbols
 
-        Sequences_base.__init__(self, name=name, seqtype=None)
+        Sequences_base.__init__(self, name, seqtype)
         self.alignment = True
         self.seqpos2alignpos_cache = {}
         self.alignpos2seqpos_cache = {}
