@@ -1681,7 +1681,7 @@ class Seq_alignment(Sequences_base):
         obj.seqpos2alignpos_cache = {}    # Python note: change to lazy evaluation? keep better track of this
         obj.alignpos2seqpos_cache = {}
         obj.annotation = self.annotation  # string
-        obj.partitions = self.partitions  # tuple of immutable objects (strings and ints)
+        obj.partitions = copy.deepcopy(self.partitions)  # tuple of immutable objects (strings and ints)
 
         return obj
 
