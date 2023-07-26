@@ -1713,12 +1713,13 @@ class Seq_alignment(Sequences_base):
         if other.seqtype != alcopy.seqtype:
             alcopy.seqtype = "mixed"
 
-        # Update partition info in alcopy
-        partitiontuple = (other.name, alcopy.alignlen(), other.alignlen(), other.seqtype)    # (name, partition-start, partition-length, seqtype)
-        if len(alcopy) == 0:   # Python note: will this ever happen?? Empty alignment??
-            alcopy.partitions = [partitiontuple]  # List of (name, partition-start, partition-length) tuples
-        else:
-            alcopy.partitions.append(partitiontuple)
+        # Add partition info from other to alcopy
+        # Shift positions in other.partitions by length of alcopy
+        shiftlen = alcopy.alignlen()
+        for name, pstart, plen, seqtype in other.partitions:
+            pstart += shiftlen
+            ptup = (name, pstart, plen, seqtype)
+            alcopy.partitions.append(ptup)
 
         # Match each sequence in alcopy to other
         for i,seq in enumerate(alcopy):
