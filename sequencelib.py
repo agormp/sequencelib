@@ -1678,10 +1678,10 @@ class Seq_alignment(Sequences_base):
         obj.alphabet = self.alphabet.copy()
         obj.ambigsymbols = self.ambigsymbols.copy()
         obj.alignment = True
-        obj.seqpos2alignpos_cache = {}    # Python note: change to lazy evaluation? keep better track of this
+        obj.seqpos2alignpos_cache = {}    # Python note: change to @property? Keep better track
         obj.alignpos2seqpos_cache = {}
         obj.annotation = self.annotation  # string
-        obj.partitions = copy.deepcopy(self.partitions)  # tuple of immutable objects (strings and ints)
+        obj.partitions = self.partitions.copy()  # list of tuples of strings and ints
 
         return obj
 
