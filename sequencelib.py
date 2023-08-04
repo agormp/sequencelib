@@ -2683,7 +2683,8 @@ class Seq_alignment(Sequences_base):
         block.append("    [Specify substitution models for each partition. Different partitions may all use the \n")
         block.append("    same type of model or different types. Nucleotide models are specified using 'lset', \n")
         block.append("    while amino-acid models are specified using 'prset' and 'lset'.\n\n")
-        block.append("    Separate partitions are assumed to share tree topology, but differ in all other model aspects.\n")
+        block.append("    Separate partitions are assumed to share tree topology and have proportional branch \n")
+        block.append("    lengths, but differ in all other model aspects.\n\n")
         block.append("    The command 'unlink' is used to unlink relevant parameters across partitions.]\n\n")
 
         if self.seqtype == "DNA":
