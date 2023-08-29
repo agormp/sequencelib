@@ -1681,8 +1681,7 @@ class Seq_alignment(Sequences_base):
         obj.seqpos2alignpos_cache = {}    # Python note: change to @property? Keep better track
         obj.alignpos2seqpos_cache = {}
         obj.annotation = self.annotation  # string
-        obj.partitions = self.partitions.copy()  # list of tuples of strings and ints
-
+        obj.partitions = copy.deepcopy(self.partitions)  # list of tuples of strings and ints
         return obj
 
     #######################################################################################
@@ -1833,6 +1832,33 @@ class Seq_alignment(Sequences_base):
             s = self.annotation
             annotlist = [s[i] for i in keeplist]
             self.annotation = "".join(annotlist)
+
+        # Update self.partitions
+        keepset = set(keeplist)
+        new_partitions = []
+        for partition in self.partitions:
+            name, start_index, subregion_length, sequence_type = partition
+
+            # Calculate how many indices before start_index are removed
+            removed_before_start = sum(1 for i in range(start_index) if i not in keepset)
+
+            # Adjust the start_index
+            new_start_index = start_index - removed_before_start
+
+            # Calculate how many indices within the subregion are removed
+            removed_within_subregion = sum(1 for i in range(start_index, start_index + subregion_length) if i not in keepset)
+
+            # Adjust the subregion_length
+            new_subregion_length = subregion_length - removed_within_subregion
+
+            # If new_subregion_length is zero, it means that whole partition is removed.
+            # So, we shouldn't include it in the new_partitions list.
+            if new_subregion_length > 0:
+                new_partitions.append((name, new_start_index, new_subregion_length, sequence_type))
+
+        # Update the partitions with new values
+        self.partitions = new_partitions
+
 
     #######################################################################################
 
@@ -3889,7 +3915,7 @@ class Seqfile(object):
         if filetype in known_handles:
             return known_handles[filetype](filename, seqtype, check_alphabet, degap, nameishandle)
 
-        # If autodetection of "filetype" is requested:
+        # If autodetection of "filetype" is requested:])
         # Perform "magic number" test based on first line in file. Likely to not always work...
         elif filetype == "autodetect":
 
