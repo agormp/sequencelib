@@ -15,6 +15,13 @@ The sequencelib.py module is available on GitHub: https://github.com/agormp/sequ
 python3 -m pip install sequencelib
 ```
 
+Upgrading to latest version:
+
+```
+python3 -m pip install --upgrade sequencelib
+```
+
+
 ## Highlights
 
 To be written
