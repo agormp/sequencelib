@@ -1450,11 +1450,11 @@ class Sequences_base(object):
         For instance before creating phylogenetic tree from sequences"""
 
         illegal_esc_list = [re.escape(char) for char in illegal]
-        illegal_esc_list.append("_") # To avoid two underscores in a row
+        illegal_esc_list.append(rep)  # To avoid two successive replacement characters
         illegal_esc_string = "".join(illegal_esc_list)
         regex = f"[{illegal_esc_string}]+"
         for old in self.getnames():
-            new = re.sub(regex,"_",old)
+            new = re.sub(regex, rep, old)
             self.changeseqname(old, new)
 
     #######################################################################################
