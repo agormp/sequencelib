@@ -1916,18 +1916,46 @@ class Seq_alignment(Sequences_base):
     #######################################################################################
 
     def remfracgapcol(self, frac):
-        """Removes all columns where more than "frac" fraction of residues are gaps"""
+        """Removes all columns where >= "frac" fraction of residues are gaps"""
 
-        # Construct list of columns with <= frac fraction gaps (these will be kept)
-        keeplist = []
+        discardlist = []
         nseqs = len(self)
         for i in range(self.alignlen()):
             col = self.getcolumn(i)
             gapfrac = col.count("-") / nseqs
-            if gapfrac <= frac:
-                keeplist.append(i)
+            if gapfrac >= frac:
+                discardlist.append(i)
 
         # Apply filter to sequences so only columns with <= frac fraction gaps are kept
+        self.remcols(discardlist)
+
+    #######################################################################################
+
+    def remendgapcol(self, frac=0.5):
+        """Removes columns from both ends of alignment where > frac fraction of sequences
+        have endgaps (contiguous gappy region starting at either end of alignment)"""
+
+        endgapfrac = self.endgapfraclist()
+        if frac == 0.0:
+            remlist = [i for i in range(len(endgapfrac)) if endgapfrac[i]>0.0]
+        else:
+            remlist = [i for i in range(len(endgapfrac)) if endgapfrac[i]>=frac]
+        self.remcols(remlist)
+
+    #######################################################################################
+
+    def samplecols(self, samplesize):
+        """Randomly selects samplesize columns from alignment, discarding rest"""
+
+        # Sanity check: is samplesize larger than length of alignment? Is it less than zero?
+        if samplesize > self.alignlen():
+            raise SeqError("Requested samplesize larger than length of alignment")
+        if samplesize < 0:
+            raise SeqError("Requested samplesize is negative - must be positive integer")
+        else:
+            allpos = list(range(self.alignlen()))
+            keeplist = random.sample(allpos, samplesize)
+
         self.indexfilter(keeplist)
 
     #######################################################################################
@@ -1949,16 +1977,6 @@ class Seq_alignment(Sequences_base):
         nseq = len(self)
         endgapfrac = [ count/nseq for count in endgapfrac]
         return endgapfrac
-
-    #######################################################################################
-
-    def remendgapcol(self, frac=0.5):
-        """Removes columns from both ends of alignment where > frac fraction of sequences
-        have endgaps (contiguous gappy region starting at either end of alignment)"""
-
-        endgapfrac = self.endgapfraclist()
-        remlist = [i for i in range(len(endgapfrac)) if endgapfrac[i]>=frac]
-        self.remcols(remlist)
 
     #######################################################################################
 
