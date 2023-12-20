@@ -2007,7 +2007,7 @@ class Seq_alignment(Sequences_base):
     #######################################################################################
 
     def remendgapseqs(self, cutoff=None):
-        """Remove sequences with endgaps longer than cutoff"""
+        """Remove sequences with endgaps >= cutoff"""
 
         # Python note: individual seq should have responsibility for finding its endgaps
 
@@ -2024,7 +2024,7 @@ class Seq_alignment(Sequences_base):
                     i += step
                 if endgaplen > maxlen:
                     maxlen = endgaplen
-            if maxlen > cutoff:
+            if maxlen >= cutoff:
                 remlist.append(seq.name)
         self.remseqs(remlist)
 
