@@ -1884,6 +1884,23 @@ class Seq_alignment(Sequences_base):
 
     #######################################################################################
 
+    def remfracambigcol(self, frac):
+        """Removes all columns where >= "frac" fraction of residues are ambiguity symbols"""
+
+        discardlist = []
+        nseqs = len(self)
+        for i in range(self.alignlen()):
+            col = self.getcolumn(i)
+            ambigcount = sum([symbol in self.ambigsymbols for symbol in col])
+            ambigfrac = ambigcount / nseqs
+            if ambigfrac >= frac:
+                discardlist.append(i)
+
+        # Apply filter to sequences so only columns with <= frac fraction gaps are kept
+        self.remcols(discardlist)
+
+    #######################################################################################
+
     def remgapcol(self):
         """Removes all columns that contain one or more gaps"""
 
