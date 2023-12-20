@@ -1915,21 +1915,6 @@ class Seq_alignment(Sequences_base):
 
     #######################################################################################
 
-    def remallgapcol(self):
-       """Removes columns that contain only gaps"""
-
-       # Construct keeplist: columns that (1) are not conserved, or (2) contain a non-gap symbol
-       keeplist = []
-       for i in range(self.alignlen()):
-           columnchars = set(self.getcolumn(i))     # set() automatically uniquefies characters
-           if len(columnchars) > 1 or "-" not in columnchars:
-               keeplist.append(i)
-
-       # Apply filter to sequences so gap-only columns are discarded
-       self.indexfilter(keeplist)
-
-    #######################################################################################
-
     def remfracgapcol(self, frac):
         """Removes all columns where more than "frac" fraction of residues are gaps"""
 
