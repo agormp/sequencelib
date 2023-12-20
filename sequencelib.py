@@ -1,4 +1,4 @@
-# By Anders Gorm Pedersen, agpe@dtu.dk, Technical University of Denmark, Bioinformatics, 2012-2022
+# By Anders Gorm Pedersen, agpe@dtu.dk, Technical University of Denmark, Bioinformatics, 2012-2024
 
 ##############################################################################################################
 
@@ -12,6 +12,7 @@ from math import log10
 import math
 
 from collections import Counter
+from contextlib import nullcontext
 import re
 import string
 import sys
@@ -1473,27 +1474,23 @@ class Sequences_base(object):
 
     #######################################################################################
 
-    def rename_regexp(self, pattern, namefile=None, silently_discard_dup_name=False, fix_dupnames=False):
-        """Renames all sequences in collection by deleting parts of name matching regular expression pattern string"""
+    def rename_regexp(self, old_regex, new_string, namefile=None):
+        """Renames all sequences in collection: replace occurrences of old_regex with new_string"""
 
         # Note: renaming this way may lead to duplicate names. Need to check this during execution
-        if namefile:
-            transfile = open(namefile, "w")
-        orignames = self.getnames()
-        for oldname in orignames:
-            newname = re.sub(pattern, "", oldname)
-            # Note: output from self.getnames will change during execution as names are changed
-            if oldname != newname and newname in self.getnames():
-                if fix_dupnames:
-                    pass
-                elif silently_discard_dup_name:
-                    self.remseq(oldname)
-                else:
-                    raise SeqError("Name clash during renaming by regular expression: two sequences will get name '%s'" % newname)
-            if namefile:
-                transfile.write("%s\t%s\n" % (newname, oldname))
-            if (oldname != newname):
-                self.changeseqname(oldname, newname, fix_dupnames)
+        # Note: use dummy nullcontext if no namefile
+        with (open(namefile, "w") if namefile else nullcontext()) as transfile:
+            orignames = self.getnames()
+            for oldname in orignames:
+                newname = re.sub(old_regex, new_string, oldname)
+                # Note: output from self.getnames will change during execution as names are changed
+                if oldname != newname:
+                    if newname in self.getnames():
+                        raise SeqError("Name clash during renaming by regular expression: two sequences will get name '%s'" % newname)
+                    else:
+                        self.changeseqname(oldname, newname)
+                        if transfile:
+                            transfile.write("%s\t%s\n" % (newname, oldname))
 
     #######################################################################################
 
