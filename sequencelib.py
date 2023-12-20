@@ -3095,7 +3095,6 @@ class Seqfile_reader(object):
     """Baseclass for sequence file readers. Don't instantiate"""
 
     def __init__(self, filename, seqtype, check_alphabet, degap, nameishandle):
-
         # If nameishandle==True, directly assign "filename" as filehandle (should I do error checking?)
         if nameishandle:
             self.filename = "handle"
@@ -3565,6 +3564,7 @@ class Alignfile_reader(object):
 
         # If nameishandle==True, directly assign this as filehandle (should I do error checking?)
         if nameishandle:
+            self.filename = "handle"
             self.seqfile = filename
 
         # Special filename "-" indicates stdin.
