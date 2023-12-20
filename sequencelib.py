@@ -691,8 +691,11 @@ class DNA_sequence(Sequence):
 
     #######################################################################################
 
-    def translate(self):
-        """Translates DNA sequence to protein. Returns Protein_sequence object"""
+    def translate(self, reading_frame=1):
+        """Translates DNA sequence to protein. Returns Protein_sequence object.
+        reading_frame: 1, 2, or 3, where 1 means start translation at first
+        nucleotide in sequence. Translation includes as many full-length
+        codons as possible."""
 
         # All unknown triplets are translated as X (ambiguity symbol "N" handled intelligently)
         gencode =  { 'TTT': 'F', 'TCT': 'S', 'TAT': 'Y', 'TGT': 'C',
@@ -721,7 +724,10 @@ class DNA_sequence(Sequence):
                 }
 
         protseqlist = []
-        for i in range(0, len(self), 3):
+        first_codon_start = reading_frame - 1
+        n_full_codons = (len(self) - first_codon_start) // 3
+        last_codon_start = first_codon_start + (n_full_codons - 1) * 3
+        for i in range(first_codon_start, last_codon_start + 1, 3):
             triplet = self[i:i+3]
             aa = gencode.get(triplet, "X")
             protseqlist.append(aa)
@@ -1525,15 +1531,18 @@ class Sequences_base(object):
 
     #######################################################################################
 
-    def translate(self):
-        """If seqtype is DNA: Returns new sequence collection with seqtype protein"""
+    def translate(self, reading_frame=1):
+        """If seqtype is DNA: Returns new sequence collection with seqtype protein
+        reading_frame: 1, 2, or 3, where 1 means start translation at first
+        nucleotide in sequences. Translation includes as many full-length
+        codons as possible."""
 
         if not self.seqtype.lower() == "dna":
             raise SeqError("Attempt to translate sequences of wrong type: {}".format(self.seqtype))
 
         protseqs = self.__class__(seqtype="protein")    # Create new object of same class as self (don't know which subclass we're in)
         for seq in self:
-            protseqs.addseq(seq.translate())     # Should I copy the seq objects before addseq'ing?
+            protseqs.addseq(seq.translate(reading_frame))     # Should I copy the seq objects before addseq'ing?
         return protseqs
 
     #######################################################################################
