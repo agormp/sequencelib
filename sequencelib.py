@@ -3717,9 +3717,8 @@ class Phylipfilehandle(Alignfile_reader):
         self.seqdata = self.seqdata.split("\n")
 
         # Perform "magic number" check of whether file appears to be in phylip format
-        line = self.seqdata[0]
-        words = line.split()
-        if not (line[0].isspace() and len(words) >= 2):
+        words = self.seqdata[0].split()
+        if (len(words) < 2) or not words[0].isdigit() or not words[1].isdigit():
             raise SeqError("File '%s' does not appear to be in Phylip format" % self.filename)
 
     #######################################################################################
