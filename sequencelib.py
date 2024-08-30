@@ -3741,22 +3741,52 @@ class Phylipfilehandle(Alignfile_reader):
         # Read sequences one line at a time, discarding blank lines, constantly keeping track of names
         # NOTE: could make this more efficient if I made more assumptions about file structure
         #   (e.g., same order of names in consecutive blocks)
-        i = 0
         seqdict = {}
-        for line in self.seqdata[1:]:
+        namelist = []     # Mapping from seq-number to name (for interleaved lines with no name)
+        print(f"len(self.seqdata): {len(self.seqdata)}") #DEBUG
+        
+        # First read all lines with seqnames, keep track of order of names
+        num_names_read = 0
+        i = 1
+        while num_names_read < nseqs:
+            print(f"i: {i}") #DEBUG
+            line = self.seqdata[i]
+            print(f"line: {line}") #DEBUG
             if line.strip():   # If line is not empty
                 words = line.split()
+                if len(words) < 2:
+                    raise SeqError(f"Expecting name on beginning of this line in Phylip file: {line}")
                 name = words[0]
+                namelist.append(name)
                 seq = "".join(words[1:])
                 seqletters = set(seq)
                 if seqletters <= set(["0","1","\n"]):   # Only 0 and 1: this is gapencoding => do NOT remove numbers!!!
                     seq = seq.translate(self.spacetrans)            # Remove whitespace
                 else:
                     seq = seq.translate(self.alltrans)              # Remove whitespace and numbering
-                if name in seqdict:
+                seqdict[name] = [seq]
+                num_names_read += 1
+            i += 1
+                 
+        # Then read all following lines, adding sequence to names in same order as above
+        while i < len(self.seqdata) - 1:
+            seqi = 0
+            while seqi < nseqs:
+                name = namelist[seqi]
+                print(f"i: {i}") #DEBUG
+                line = self.seqdata[i]
+                print(f"line: {line}") #DEBUG
+                if line.strip():   # If line is not empty
+                    words = line.split()
+                    seq = "".join(words)
+                    seqletters = set(seq)
+                    if seqletters <= set(["0","1","\n"]):   # Only 0 and 1: this is gapencoding => do NOT remove numbers!!!
+                        seq = seq.translate(self.spacetrans)            # Remove whitespace
+                    else:
+                        seq = seq.translate(self.alltrans)              # Remove whitespace and numbering
                     seqdict[name].append(seq)
-                else:
-                    seqdict[name] = [seq]
+                    seqi += 1
+                i += 1
 
         # For each entry in sequence dictionary:  Join list of strings to single string,
         # convert to Sequence object of proper type, add Sequence object to alignment object
