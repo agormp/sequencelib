@@ -3743,15 +3743,12 @@ class Phylipfilehandle(Alignfile_reader):
         #   (e.g., same order of names in consecutive blocks)
         seqdict = {}
         namelist = []     # Mapping from seq-number to name (for interleaved lines with no name)
-        print(f"len(self.seqdata): {len(self.seqdata)}") #DEBUG
         
         # First read all lines with seqnames, keep track of order of names
         num_names_read = 0
         i = 1
         while num_names_read < nseqs:
-            print(f"i: {i}") #DEBUG
             line = self.seqdata[i]
-            print(f"line: {line}") #DEBUG
             if line.strip():   # If line is not empty
                 words = line.split()
                 if len(words) < 2:
@@ -3773,9 +3770,7 @@ class Phylipfilehandle(Alignfile_reader):
             seqi = 0
             while seqi < nseqs:
                 name = namelist[seqi]
-                print(f"i: {i}") #DEBUG
                 line = self.seqdata[i]
-                print(f"line: {line}") #DEBUG
                 if line.strip():   # If line is not empty
                     words = line.split()
                     seq = "".join(words)
