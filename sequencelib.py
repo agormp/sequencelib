@@ -3708,7 +3708,8 @@ class Clustalfilehandle(Alignfile_reader):
 #############################################################################################
 
 class Phylipfilehandle(Alignfile_reader):
-    """Reader class for Phylip alignment files"""
+    """Reader class for Phylip alignment files.
+    Only parses interleaved format (or sequential where seq is on same line as name)"""
 
     def __init__(self, filename, seqtype="autodetect", check_alphabet=False, degap=False, nameishandle=False):
         Alignfile_reader.__init__(self, filename, seqtype, check_alphabet, degap, nameishandle)
