@@ -584,12 +584,16 @@ class Sequence(object):
         else:
             fasta = [">%s\n" % (self.name)]
 
-        # Print seq, fold line at "width" characters
-        numlines = int(ceil(len(self)/float(width)))
-        for i in range(numlines):
-            fasta.append(self[i*width:i*width+width])
-            fasta.append("\n")
-        del fasta[-1]  # Remove trailing newline
+        # width == -1 has special meaning: print whole seq
+        if width == -1:
+            fasta.append(self.seq)
+        # else: fold lines at width characters
+        else:
+            numlines = int(ceil(len(self)/float(width)))
+            for i in range(numlines):
+                fasta.append(self[i*width:i*width+width])
+                fasta.append("\n")
+            del fasta[-1]  # Remove trailing newline
         return "".join(fasta)
 
     #######################################################################################
@@ -609,16 +613,21 @@ class Sequence(object):
         if not self.annotation:
             self.annotation = "." * len(self)
 
+        # width == -1 has special meaning: print whole seq
+        if width == -1:
+            how.append(self.seq)
+            how.append("\n")
+            how.append(self.annotation)
         # Print seq and annotation, fold lines at "width" characters
-        numlines = int(ceil(len(self)/float(width)))
-        for i in range(numlines):
-            how.append(self[i*width:i*width+width])
-            how.append("\n")
-        for i in range(numlines):
-            how.append(self.annotation[i*width:i*width+width])
-            how.append("\n")
-
-        del how[-1]  # Remove trailing newline
+        else:
+            numlines = int(ceil(len(self)/float(width)))
+            for i in range(numlines):
+                how.append(self[i*width:i*width+width])
+                how.append("\n")
+            for i in range(numlines):
+                how.append(self.annotation[i*width:i*width+width])
+                how.append("\n")
+            del how[-1]  # Remove trailing newline
         return "".join(how)
 
     #######################################################################################
@@ -2392,8 +2401,10 @@ class Seq_alignment(Sequences_base):
 
         if len(self) == 0:
             raise SeqError("No sequences in sequence set.  Can't create phylip")
-
+            
         alignlen = self.alignlen()
+        if width == -1:
+            width = alignlen
         numseq = len(self)
         numseqblocks = int(ceil(self.alignlen()/float(width)))
 
@@ -2431,6 +2442,8 @@ class Seq_alignment(Sequences_base):
             raise SeqError("No sequences in sequence set.  Can't create clustal")
 
         alignlen = self.alignlen()
+        if width == -1:
+            width = alignlen
         numseqblocks = int(ceil(alignlen/float(width)))
 
         # If format is not protein (presumably "DNA") then conservation line is limited to scoring conserved
@@ -2543,6 +2556,8 @@ class Seq_alignment(Sequences_base):
         ####################################################################################
 
         alignlen = self.alignlen()
+        if width == -1:
+            width = alignlen
         numseq = len(self)
         alphabet = "".join(sorted(list(self.alphabet)))
         seqtype = self.seqtype.lower()
@@ -2599,6 +2614,8 @@ class Seq_alignment(Sequences_base):
         # Python note: actually this is stupid encoding, one char at a time, not gap regions
 
         alignlen = self.alignlen()
+        if width == -1:
+            width = alignlen
         numseq = len(self)
         numseqblocks = int(ceil(alignlen/float(width)))
         seqtype = self.seqtype.lower()
