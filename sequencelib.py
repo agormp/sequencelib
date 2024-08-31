@@ -914,9 +914,6 @@ class Contig(object):
         """Merges Contig object with other Contig given overlap info from findoverlap.
            Keeps track of positions of all reads from both Contigs"""
 
-        # Python note: BROKEN!!! appendseq and prependseq are no longer in-place but returns new
-        # Sequence object. Chacnge code accordingly!!!
-
         # "overlap" is result tuple from .findoverlap method
         # b == 0: a is more upstream, so assembly starts with a (vice versa for a == 0)
         # bstop < bhi: b has extra part downstream of overlap that should be appended to assembly
@@ -930,7 +927,7 @@ class Contig(object):
             # Sequence b (other) has extra part downstream that needs to be appended to assembly
             if bstop < blen:
                 downstreamseq = other.assembly.subseq(bstop, blen)
-                self.assembly.appendseq(downstreamseq)
+                self.assembly = self.assembly.appendseq(downstreamseq)
 
             # Add reads from b to readlist in a, and update read coordinates:
             # b added to end, so all reads in a are OK, but all reads in b were shifted by astart
@@ -943,7 +940,7 @@ class Contig(object):
         # Sequence b must have extra part upstream that needs to be prepended to assembly (since bstart != 0)
         elif astart == 0:
             upstreamseq = other.assembly.subseq(0, bstart)
-            self.assembly.prependseq(upstreamseq)
+            self.assembly = self.assembly.prependseq(upstreamseq)
 
             # Correct coordinates for reads in readlist of a: these have been shifted by bstart
             for readname in self.readdict:
