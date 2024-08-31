@@ -857,7 +857,51 @@ class Test_revcomp_DNA:
 
 ###################################################################################################
 
+class Test_translate_DNA:
 
+    def test_translate_reading_frame_1(self):
+        seq = "ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG"
+        dnaseq = sq.DNA_sequence("s1", seq)
+        protein_seq = dnaseq.translate()
+        assert protein_seq.seq == "MAIVMGR*KGAR*"
+        assert isinstance(protein_seq, sq.Protein_sequence)
+
+    def test_translate_reading_frame_2(self):
+        seq = "ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG"
+        dnaseq = sq.DNA_sequence("s2", seq)
+        protein_seq = dnaseq.translate(reading_frame=2)
+        assert protein_seq.seq == "WPL*WAAERVPD"
+        assert isinstance(protein_seq, sq.Protein_sequence)
+
+    def test_translate_reading_frame_3(self):
+        seq = "ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG"
+        dnaseq = sq.DNA_sequence("s3", seq)
+        protein_seq = dnaseq.translate(reading_frame=3)
+        assert protein_seq.seq == "GHCNGPLKGCPI"
+        assert isinstance(protein_seq, sq.Protein_sequence)
+
+    def test_translate_with_ambiguous_bases(self):
+        seq = "ATGNNNCGT"
+        dnaseq = sq.DNA_sequence("s4", seq)
+        protein_seq = dnaseq.translate()
+        assert protein_seq.seq == "MXR"
+        assert isinstance(protein_seq, sq.Protein_sequence)
+
+    def test_translate_with_short_sequence(self):
+        seq = "ATG"
+        dnaseq = sq.DNA_sequence("s5", seq)
+        protein_seq = dnaseq.translate()
+        assert protein_seq.seq == "M"
+        assert isinstance(protein_seq, sq.Protein_sequence)
+
+    def test_translate_empty_sequence(self):
+        seq = ""
+        dnaseq = sq.DNA_sequence("s6", seq)
+        protein_seq = dnaseq.translate()
+        assert protein_seq.seq == ""
+        assert isinstance(protein_seq, sq.Protein_sequence)
+
+###################################################################################################
 
 ###################################################################################################
 ###################################################################################################
