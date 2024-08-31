@@ -1637,8 +1637,8 @@ class Seq_set(Sequences_base):
 
     #######################################################################################
 
-    def __init__(self, name=None, seqtype=None, seqlist=None):
-        Sequences_base.__init__(self, name=name, seqtype=None)
+    def __init__(self, name="sequences", seqtype=None, seqlist=None):
+        Sequences_base.__init__(self, name=name, seqtype=seqtype)
         self.alignment = False
         self.seqpos2alignpos_cache = {}
         self.alignpos2seqpos_cache = {}
