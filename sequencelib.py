@@ -4007,7 +4007,7 @@ class Seqfile(object):
                 filetype = "nexus"
             elif firstline.lower().startswith("# stockholm"):
                 filetype = "stockholm"
-            elif (firstline[0].isspace() and len(firstline.split()) >= 2):
+            elif len(firstline.split()) >= 2 and firstline.split()[0].isdigit() and firstline.split()[1].isdigit():
                 filetype = "phylip"
             elif firstline.startswith("CLUSTAL"):
                 filetype = "clustal"
