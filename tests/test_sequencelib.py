@@ -855,8 +855,6 @@ class Test_revcomp_DNA:
 
 ###################################################################################################
 
-###################################################################################################
-
 class Test_translate_DNA:
 
     def test_translate_reading_frame_1(self):
@@ -902,7 +900,209 @@ class Test_translate_DNA:
         assert isinstance(protein_seq, sq.Protein_sequence)
 
 ###################################################################################################
+###################################################################################################
+
+# Tests for class Protein_sequence
+# maybe also test all or some base class methods for this?
 
 ###################################################################################################
+
+class Test_init_Protein:
+
+    seqlen = 100
+
+    def test_initialization(self):
+        name = "protein1"
+        seq = "".join(random.choices("ACDEFGHIKLMNPQRSTVWY", k=self.seqlen))
+        annot = "".join(random.choices("IHP", k=self.seqlen))
+        comments = "Protein sequence example"
+        protein_seq = sq.Protein_sequence(name=name, seq=seq, annotation=annot, comments=comments)
+        assert protein_seq.name == name
+        assert protein_seq.seq == seq.upper()
+        assert protein_seq.annotation == annot
+        assert protein_seq.comments == comments
+        assert protein_seq.seqtype == "protein"
+
+###################################################################################################
+###################################################################################################
+
+# Tests for class Protein_sequence
+# maybe also test all or some base class methods for this?
+
+###################################################################################################
+
+class Test_ASCII_sequence:
+
+    seqlen = 50
+
+    def test_initialization(self):
+        name = "ascii1"
+        seq = "".join(random.choices("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", k=self.seqlen))
+        annot = "".join(random.choices("AB", k=self.seqlen))
+        comments = "ASCII sequence example"
+        ascii_seq = sq.ASCII_sequence(name=name, seq=seq, annotation=annot, comments=comments)
+        assert ascii_seq.name == name
+        assert ascii_seq.seq == seq.upper()
+        assert ascii_seq.annotation == annot
+        assert ascii_seq.comments == comments
+        assert ascii_seq.seqtype == "ASCII"
+        
+###################################################################################################
+###################################################################################################
+
+# Tests for class Restriction_sequence
+# maybe also test all or some base class methods for this?
+
+###################################################################################################
+
+class Test_Restriction_sequence:
+
+    seqlen = 20
+
+    def test_initialization(self):
+        name = "restriction1"
+        seq = "".join(random.choices("01", k=self.seqlen))
+        annot = "".join(random.choices("01", k=self.seqlen))
+        comments = "Restriction sequence example"
+        restriction_seq = sq.Restriction_sequence(name=name, seq=seq, annotation=annot, comments=comments)
+        assert restriction_seq.name == name
+        assert restriction_seq.seq == seq.upper()
+        assert restriction_seq.annotation == annot
+        assert restriction_seq.comments == comments
+        assert restriction_seq.seqtype == "restriction"
+
+###################################################################################################
+###################################################################################################
+
+# Tests for class Standard_sequence
+# maybe also test all or some base class methods for this?
+
+###################################################################################################
+
+class Test_Standard_sequence:
+
+    seqlen = 20
+
+    def test_initialization(self):
+        name = "standard1"
+        seq = "".join(random.choices("ABCDEFGH", k=self.seqlen))
+        annot = "".join(random.choices("12345678", k=self.seqlen))
+        comments = "Standard sequence example"
+        standard_seq = sq.Standard_sequence(name=name, seq=seq, annotation=annot, comments=comments)
+        assert standard_seq.name == name
+        assert standard_seq.seq == seq.upper()
+        assert standard_seq.annotation == annot
+        assert standard_seq.comments == comments
+        assert standard_seq.seqtype == "standard"
+
+###################################################################################################
+###################################################################################################
+
+# Tests for class Mixed_sequence
+# maybe also test all or some base class methods for this?
+
+###################################################################################################
+
+class Test_Mixed_sequence:
+
+    seqlen = 20
+
+    def test_initialization(self):
+        name = "mixed1"
+        seq = "".join(random.choices("ACGT01-", k=self.seqlen))
+        annot = "".join(random.choices("ACGT01-", k=self.seqlen))
+        comments = "Mixed sequence example"
+        mixed_seq = sq.Mixed_sequence(name=name, seq=seq, annotation=annot, comments=comments)
+        assert mixed_seq.name == name
+        assert mixed_seq.seq == seq.upper()
+        assert mixed_seq.annotation == annot
+        assert mixed_seq.comments == comments
+        assert mixed_seq.seqtype == "mixed"
+
+###################################################################################################
+###################################################################################################
+
+# Test Classes for Contig Methods
+
+###################################################################################################
+
+class Test_Contig_init:
+
+    def test_initialization(self):
+        seq = sq.DNA_sequence(name="read1", seq="ATGCGT")
+        contig = sq.Contig(seq)
+        assert contig.name == "contig_0001"
+        assert contig.assembly.seq == seq.seq
+        assert contig.readdict["read1"].startpos == 0
+        assert contig.readdict["read1"].stoppos == len(seq.seq)
+
+###################################################################################################
+
+class Test_Contig_findoverlap:
+
+    def test_full_overlap(self):
+        seq1 = sq.DNA_sequence(name="read1", seq="ATGCGT")
+        seq2 = sq.DNA_sequence(name="read2", seq="GCGT")
+        contig1 = sq.Contig(seq1)
+        contig2 = sq.Contig(seq2)
+        overlap = contig1.findoverlap(contig2, minoverlap=2)
+        assert overlap == (2, 6, 0, 4, 4)  # seq2 fully overlaps at the end of seq1
+
+    def test_partial_overlap(self):
+        seq1 = sq.DNA_sequence(name="read1", seq="ATGCGT")
+        seq2 = sq.DNA_sequence(name="read2", seq="CGTGA")
+        contig1 = sq.Contig(seq1)
+        contig2 = sq.Contig(seq2)
+        overlap = contig1.findoverlap(contig2, minoverlap=3)
+        assert overlap == (3, 6, 0, 3, 3)  # Partial overlap of "CGT"
+
+    def test_no_overlap(self):
+        seq1 = sq.DNA_sequence(name="read1", seq="ATGCGT")
+        seq2 = sq.DNA_sequence(name="read2", seq="TTTT")
+        contig1 = sq.Contig(seq1)
+        contig2 = sq.Contig(seq2)
+        overlap = contig1.findoverlap(contig2, minoverlap=2)
+        assert overlap is None  # No overlap found
+
+###################################################################################################
+
+class Test_Contig_merge:
+
+    def test_merge_with_overlap(self):
+        seq1 = sq.DNA_sequence(name="read1", seq="ATGCGT")
+        seq2 = sq.DNA_sequence(name="read2", seq="GCGTAA")
+        contig1 = sq.Contig(seq1)
+        contig2 = sq.Contig(seq2)
+        overlap = contig1.findoverlap(contig2, minoverlap=2)
+        contig1.merge(contig2, overlap)
+        assert contig1.assembly.seq == "ATGCGTAA"  # Sequences are merged with overlapping part
+        assert len(contig1.readdict) == 2  # Contains both reads
+
+    def test_merge_no_overlap(self):
+        seq1 = sq.DNA_sequence(name="read1", seq="ATGCGT")
+        seq2 = sq.DNA_sequence(name="read2", seq="TTTAAA")
+        contig1 = sq.Contig(seq1)
+        contig2 = sq.Contig(seq2)
+        overlap = contig1.findoverlap(contig2, minoverlap=2)
+        assert overlap is None  # No overlap, merge should not be performed
+
+###################################################################################################
+
+class Test_Contig_regions:
+
+    def test_regions_creation(self):
+        seq1 = sq.DNA_sequence(name="read1", seq="ATGCGT")
+        contig = sq.Contig(seq1)
+        seq2 = sq.DNA_sequence(name="read2", seq="GCGTAA")
+        contig.readdict["read2"] = seq2
+        contig.readdict["read2"].startpos = 3
+        contig.readdict["read2"].stoppos = 9
+        regions = contig.regions()
+        assert len(regions) == 2  # Two regions should be created
+        assert regions[0].contig_start == 0
+        assert regions[0].contig_stop == 3
+        assert regions[1].contig_start == 3
+        assert regions[1].contig_stop == 6
+
 ###################################################################################################
 
