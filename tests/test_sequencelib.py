@@ -830,35 +830,30 @@ class Test_raw_DNA:
 
 ###################################################################################################
 
-# class Test_revcomp_DNA:
-#
-#     def test_simple_sequence(self):
-#         seq = "ATGC"
-#         dnaseq = sq.DNA_sequence("s1", seq)
-#         revcomp_dnaseq = dnaseq.revcomp()
-#         assert revcomp_dnaseq.seq == "GCAT"
-#         assert revcomp_dnaseq.name == "s1_revcomp"
-#
-#     def test_sequence_with_ambiguous_bases(self):
-#         seq = "ATGCRYSWKMBDHVN"
-#         dnaseq = sq.DNA_sequence("s2", seq)
-#         revcomp_dnaseq = dnaseq.revcomp()
-#         assert revcomp_dnaseq.seq == "NBDHKMVWSYRCAT"
-#         assert revcomp_dnaseq.name == "s2_revcomp"
-#
-#     def test_empty_sequence(self):
-#         seq = ""
-#         dnaseq = sq.DNA_sequence("s3", seq)
-#         revcomp_dnaseq = dnaseq.revcomp()
-#         assert revcomp_dnaseq.seq == ""
-#         assert revcomp_dnaseq.name == "s3_revcomp"
-#
-#     def test_palindromic_sequence(self):
-#         seq = "ATGCAT"
-#         dnaseq = sq.DNA_sequence("s4", seq)
-#         revcomp_dnaseq = dnaseq.revcomp()
-#         assert revcomp_dnaseq.seq == "ATGCAT"
-#         assert revcomp_dnaseq.name == "s4_revcomp"
+class Test_revcomp_DNA:
+
+    def test_simple_sequence(self):
+        seq = "ATGC"
+        dnaseq = sq.DNA_sequence("s1", seq)
+        revcomp_dnaseq = dnaseq.revcomp()
+        assert revcomp_dnaseq.seq == "GCAT"
+        assert revcomp_dnaseq.name == "s1_revcomp"
+
+    def test_sequence_with_ambiguous_bases(self):
+        seq = "ATGCRYSWKMBDHVN"
+        dnaseq = sq.DNA_sequence("s2", seq)
+        revcomp_dnaseq = dnaseq.revcomp()
+        assert revcomp_dnaseq.seq == "NBDHVKMWSRYGCAT"
+        assert revcomp_dnaseq.name == "s2_revcomp"
+
+    def test_empty_sequence(self):
+        seq = ""
+        dnaseq = sq.DNA_sequence("s3", seq)
+        revcomp_dnaseq = dnaseq.revcomp()
+        assert revcomp_dnaseq.seq == ""
+        assert revcomp_dnaseq.name == "s3_revcomp"
+
+###################################################################################################
 
 ###################################################################################################
 
