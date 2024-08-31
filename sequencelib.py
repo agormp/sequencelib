@@ -3783,22 +3783,23 @@ class Phylipfilehandle(Alignfile_reader):
             i += 1
                  
         # Then read all following lines, adding sequence to names in same order as above
-        while i < len(self.seqdata) - 1:
-            seqi = 0
-            while seqi < nseqs:
+        seqi = 0
+        while i < len(self.seqdata):
+            line = self.seqdata[i]
+            if line.strip():  # If line is not empty
                 name = namelist[seqi]
-                line = self.seqdata[i]
-                if line.strip():   # If line is not empty
-                    words = line.split()
-                    seq = "".join(words)
-                    seqletters = set(seq)
-                    if seqletters <= set(["0","1","\n"]):   # Only 0 and 1: this is gapencoding => do NOT remove numbers!!!
-                        seq = seq.translate(self.spacetrans)            # Remove whitespace
-                    else:
-                        seq = seq.translate(self.alltrans)              # Remove whitespace and numbering
-                    seqdict[name].append(seq)
-                    seqi += 1
-                i += 1
+                words = line.split()
+                seq = "".join(words)
+                seqletters = set(seq)
+                if seqletters <= {"0", "1", "\n"}:  # Only 0 and 1: this is gapencoding => do NOT remove numbers!!!
+                    seq = seq.translate(self.spacetrans)  # Remove whitespace
+                else:
+                    seq = seq.translate(self.alltrans)  # Remove whitespace and numbering
+                seqdict[name].append(seq)
+                seqi += 1
+                if seqi >= nseqs:  # Reset for next set of sequences
+                    seqi = 0
+            i += 1
 
         # For each entry in sequence dictionary:  Join list of strings to single string,
         # convert to Sequence object of proper type, add Sequence object to alignment object
@@ -4000,7 +4001,7 @@ class Seqfile(object):
                 tempfile = open(filename)
                 firstline = tempfile.readline()
                 tempfile.close()
-
+            
             if firstline.startswith(">"):
                 filetype = "fasta"
             elif firstline.lower().startswith("#nexus"):
