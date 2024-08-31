@@ -1173,23 +1173,25 @@ class Sequences_base(object):
     def __eq__(self, other):
         """Implements equality check between sequence collections"""
 
-        # Two sequence collections are identical if (1) they have same size, and (2) every sequence
-        # in collection has a match in collection 2. Note: sequence names can be different
+        # Two sequence collections are identical if (1) they have the same size, and (2) every sequence
+        # in the collection has a match in collection 2. Note: sequence names can be different
         if len(self) != len(other):
             return False
 
-        else:
-            # For each seq in 1, compare to seqs in 2.
-            # If match found: move on to next seq in 1. If no match: return False
-            for seq1 in self:
-                for seq2 in other:
-                    if seq1 == seq2:
-                        break
+        # For each seq in self, compare to seqs in other.
+        # If match found: move on to the next seq in self. If no match: return False.
+        for seq1 in self:
+            match_found = False
+            for seq2 in other:
+                if seq1 == seq2:
+                    match_found = True
+                    break
+            if not match_found:
                 return False
 
-        # If we fell off loop: collections must be identical. Return True
+        # If all sequences match, return True
         return True
-
+    
     #######################################################################################
 
     def __ne__(self, other):
