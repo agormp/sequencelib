@@ -693,6 +693,46 @@ class Test_composition_DNA:
 
 ###################################################################################################
 
+class Test_findgaps_DNA:
+
+    def test_single_gap(self):
+        seq = "AAAAA---CCCCC"
+        dnaseq = sq.DNA_sequence("s1", seq)
+        gaps = dnaseq.findgaps()
+        assert gaps == [(5, 7)]
+
+    def test_multiple_gaps(self):
+        seq = "AA--CC----GG---TT"
+        dnaseq = sq.DNA_sequence("s1", seq)
+        gaps = dnaseq.findgaps()
+        assert gaps == [(2, 3), (6, 9), (12, 14)]
+
+    def test_no_gaps(self):
+        seq = "AAAAACCCCCGGGGG"
+        dnaseq = sq.DNA_sequence("s1", seq)
+        gaps = dnaseq.findgaps()
+        assert gaps == []
+
+    def test_gap_at_start(self):
+        seq = "---AAACCCGGG"
+        dnaseq = sq.DNA_sequence("s1", seq)
+        gaps = dnaseq.findgaps()
+        assert gaps == [(0, 2)]
+
+    def test_gap_at_end(self):
+        seq = "AAACCCGGG---"
+        dnaseq = sq.DNA_sequence("s1", seq)
+        gaps = dnaseq.findgaps()
+        assert gaps == [(9, 11)]
+
+    def test_entirely_gaps(self):
+        seq = "--------"
+        dnaseq = sq.DNA_sequence("s1", seq)
+        gaps = dnaseq.findgaps()
+        assert gaps == [(0, 7)]
+
+###################################################################################################
+
 class Test_fasta_DNA:
 
     def test_len200_widthdefault_comments(self):
@@ -787,6 +827,42 @@ class Test_raw_DNA:
         output = dnaseq.raw()
         expected_output = seq
         assert output == expected_output
+
+###################################################################################################
+
+# class Test_revcomp_DNA:
+#
+#     def test_simple_sequence(self):
+#         seq = "ATGC"
+#         dnaseq = sq.DNA_sequence("s1", seq)
+#         revcomp_dnaseq = dnaseq.revcomp()
+#         assert revcomp_dnaseq.seq == "GCAT"
+#         assert revcomp_dnaseq.name == "s1_revcomp"
+#
+#     def test_sequence_with_ambiguous_bases(self):
+#         seq = "ATGCRYSWKMBDHVN"
+#         dnaseq = sq.DNA_sequence("s2", seq)
+#         revcomp_dnaseq = dnaseq.revcomp()
+#         assert revcomp_dnaseq.seq == "NBDHKMVWSYRCAT"
+#         assert revcomp_dnaseq.name == "s2_revcomp"
+#
+#     def test_empty_sequence(self):
+#         seq = ""
+#         dnaseq = sq.DNA_sequence("s3", seq)
+#         revcomp_dnaseq = dnaseq.revcomp()
+#         assert revcomp_dnaseq.seq == ""
+#         assert revcomp_dnaseq.name == "s3_revcomp"
+#
+#     def test_palindromic_sequence(self):
+#         seq = "ATGCAT"
+#         dnaseq = sq.DNA_sequence("s4", seq)
+#         revcomp_dnaseq = dnaseq.revcomp()
+#         assert revcomp_dnaseq.seq == "ATGCAT"
+#         assert revcomp_dnaseq.name == "s4_revcomp"
+
+###################################################################################################
+
+
 
 ###################################################################################################
 ###################################################################################################
