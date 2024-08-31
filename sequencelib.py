@@ -4015,8 +4015,7 @@ class Seqfile(object):
                 filetype = "tab"
             elif firstline.startswith("LOCUS"):
                 filetype = "genbank"
-            # NOTE: something wrong with how vs phylip autodetection - repair!
-            elif (len(firstline.split()) >= 2) and (firstline.split()[0].isdigit) and firstline[6] == " ":
+            elif (len(firstline.split()) >= 2) and (firstline.split()[0].isdigit) and any(char.isalpha() for char in firstline.split()[1]):
                 filetype = "how"
             else:
                 # If all other tests did not work: raise SeqError
