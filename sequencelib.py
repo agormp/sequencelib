@@ -692,7 +692,7 @@ class DNA_sequence(Sequence):
     def revcomp(self):
         """Returns reverse complement sequence as DNA sequence object - original is unchanged"""
 
-        comptable = str.maketrans("ATUGCYSWKMBDHVN", "TAACGRSWMKVHDBN")
+        comptable = str.maketrans("ATUGCYRSWKMBDHVN", "TAACGRYSWMKVHDBN")
         revcompseq = self.seq.translate(comptable)
         revcompseq = revcompseq[::-1]   # Bit of a hack: Empty slice (returns all) with stride -1 (reverses)
         name = self.name + "_revcomp"
