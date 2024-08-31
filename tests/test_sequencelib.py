@@ -1089,20 +1089,327 @@ class Test_Contig_merge:
 ###################################################################################################
 
 class Test_Contig_regions:
+    pass
+    
+    # To be written
+    
+###################################################################################################
+###################################################################################################
 
-    def test_regions_creation(self):
-        seq1 = sq.DNA_sequence(name="read1", seq="ATGCGT")
-        contig = sq.Contig(seq1)
-        seq2 = sq.DNA_sequence(name="read2", seq="GCGTAA")
-        contig.readdict["read2"] = seq2
-        contig.readdict["read2"].startpos = 3
-        contig.readdict["read2"].stoppos = 9
-        regions = contig.regions()
-        assert len(regions) == 2  # Two regions should be created
-        assert regions[0].contig_start == 0
-        assert regions[0].contig_stop == 3
-        assert regions[1].contig_start == 3
-        assert regions[1].contig_stop == 6
+# Test Classes for Read_assembler Methods
+
+###################################################################################################
+# TBD. NOte: potential issue with class level Contig counter
+
+###################################################################################################
+###################################################################################################
+
+# Test Code for Seq_set
 
 ###################################################################################################
 
+class Test_Seq_set_init:
+
+    def test_initialization_default(self):
+        """Test initialization with default parameters."""
+        seq_set = sq.Seq_set()  
+        assert seq_set.name == "sequences"  # Default name from Sequences_base
+        assert seq_set.seqtype is None
+        assert seq_set.seqdict == {}
+        assert seq_set.seqnamelist == []
+        assert seq_set.alignment is False
+        assert seq_set.seqpos2alignpos_cache == {}
+        assert seq_set.alignpos2seqpos_cache == {}
+        assert seq_set.alphabet is None
+        assert seq_set.ambigsymbols is None
+
+    def test_initialization_with_name_and_seqtype(self):
+        """Test initialization with specific name and seqtype."""
+        name = "my_seq_set"
+        seqtype = "DNA"
+        seq_set = sq.Seq_set(name=name, seqtype=seqtype)
+        assert seq_set.name == name
+        assert seq_set.seqtype == seqtype
+        assert seq_set.seqdict == {}
+        assert seq_set.seqnamelist == []
+        assert seq_set.alignment is False
+        assert seq_set.seqpos2alignpos_cache == {}
+        assert seq_set.alignpos2seqpos_cache == {}
+        # Assuming seqtype_attributes function returns the expected alphabet and ambigsymbols for DNA
+        expected_alphabet, expected_ambigsymbols = sq.seqtype_attributes(seqtype)
+        assert seq_set.alphabet == expected_alphabet
+        assert seq_set.ambigsymbols == expected_ambigsymbols
+
+    def test_initialization_with_seqlist(self):
+        """Test initialization with a provided list of sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seqlist = [seq1, seq2]
+        seq_set = sq.Seq_set(seqlist=seqlist)
+        assert len(seq_set.seqdict) == 2
+        assert "seq1" in seq_set.seqdict
+        assert "seq2" in seq_set.seqdict
+        assert seq_set.seqdict["seq1"] == seq1
+        assert seq_set.seqdict["seq2"] == seq2
+        assert seq_set.seqnamelist == ["seq1", "seq2"]
+        assert seq_set.alignment is False
+        assert seq_set.seqpos2alignpos_cache == {}
+        assert seq_set.alignpos2seqpos_cache == {}
+
+    def test_initialization_with_empty_seqlist(self):
+        """Test initialization with an empty sequence list."""
+        seqlist = []
+        seq_set = sq.Seq_set(seqlist=seqlist)
+        assert seq_set.seqdict == {}
+        assert seq_set.seqnamelist == []
+        assert seq_set.alignment is False
+        assert seq_set.seqpos2alignpos_cache == {}
+        assert seq_set.alignpos2seqpos_cache == {}
+
+###################################################################################################
+
+class Test_Seq_set_remgaps:
+
+    def test_remgaps_with_gaps(self):
+        """Test the remgaps method when sequences contain gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="A-T-C-G")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GG--TA")
+        seqlist = [seq1, seq2]
+        seq_set = sq.Seq_set(seqlist=seqlist)
+        
+        # Ensure sequences initially have gaps
+        assert seq_set.seqdict["seq1"].seq == "A-T-C-G"
+        assert seq_set.seqdict["seq2"].seq == "GG--TA"
+
+        # Apply remgaps
+        seq_set.remgaps()
+
+        # Check if gaps have been removed
+        assert seq_set.seqdict["seq1"].seq == "ATCG"
+        assert seq_set.seqdict["seq2"].seq == "GGTA"
+
+    def test_remgaps_without_gaps(self):
+        """Test the remgaps method when sequences do not contain gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seqlist = [seq1, seq2]
+        seq_set = sq.Seq_set(seqlist=seqlist)
+
+        # Ensure sequences initially have no gaps
+        assert seq_set.seqdict["seq1"].seq == "ATCG"
+        assert seq_set.seqdict["seq2"].seq == "GGTA"
+
+        # Apply remgaps
+        seq_set.remgaps()
+
+        # Check if sequences remain unchanged
+        assert seq_set.seqdict["seq1"].seq == "ATCG"
+        assert seq_set.seqdict["seq2"].seq == "GGTA"
+
+    def test_remgaps_mixed_content(self):
+        """Test the remgaps method with a mix of sequences with and without gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="A-TCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="C--G-TA")
+        seqlist = [seq1, seq2, seq3]
+        seq_set = sq.Seq_set(seqlist=seqlist)
+
+        # Ensure sequences initially have mixed content
+        assert seq_set.seqdict["seq1"].seq == "A-TCG"
+        assert seq_set.seqdict["seq2"].seq == "GGTA"
+        assert seq_set.seqdict["seq3"].seq == "C--G-TA"
+
+        # Apply remgaps
+        seq_set.remgaps()
+
+        # Check if gaps have been removed where necessary
+        assert seq_set.seqdict["seq1"].seq == "ATCG"
+        assert seq_set.seqdict["seq2"].seq == "GGTA"
+        assert seq_set.seqdict["seq3"].seq == "CGTA"
+
+    def test_remgaps_empty_sequences(self):
+        """Test the remgaps method when sequences are empty."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="")
+        seq2 = sq.DNA_sequence(name="seq2", seq="---")
+        seqlist = [seq1, seq2]
+        seq_set = sq.Seq_set(seqlist=seqlist)
+
+        # Ensure sequences are initially empty or only have gaps
+        assert seq_set.seqdict["seq1"].seq == ""
+        assert seq_set.seqdict["seq2"].seq == "---"
+
+        # Apply remgaps
+        seq_set.remgaps()
+
+        # Check if sequences remain or become empty
+        assert seq_set.seqdict["seq1"].seq == ""
+        assert seq_set.seqdict["seq2"].seq == ""
+
+###################################################################################################
+
+class Test_Seq_set_len:
+
+    def test_len_empty(self):
+        """Test len() with an empty Seq_set."""
+        seq_set = sq.Seq_set()
+        assert len(seq_set) == 0
+
+    def test_len_non_empty(self):
+        """Test len() with a Seq_set containing sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seqlist = [seq1, seq2]
+        seq_set = sq.Seq_set(seqlist=seqlist)
+        assert len(seq_set) == 2
+
+###################################################################################################
+
+class Test_Seq_set_getitem:
+
+    def test_getitem_by_index(self):
+        """Test accessing sequences by integer index."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seqlist = [seq1, seq2]
+        seq_set = sq.Seq_set(seqlist=seqlist)
+        assert seq_set[0] == seq1
+        assert seq_set[1] == seq2
+
+    def test_getitem_by_slice(self):
+        """Test accessing a subset of sequences using slicing."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seqlist = [seq1, seq2]
+        seq_set = sq.Seq_set(seqlist=seqlist)
+        subset = seq_set[0:2]
+        assert isinstance(subset, sq.Seq_set)
+        assert len(subset) == 2
+        assert subset[0] == seq1
+        assert subset[1] == seq2
+
+    def test_getitem_by_tuple(self):
+        """Test accessing subsequence using tuple indexing."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seqlist = [seq1]
+        seq_set = sq.Seq_set(seqlist=seqlist)
+        subseq = seq_set[0, 1:3]
+        assert subseq.seq == "TC"
+
+    def test_getitem_invalid_index(self):
+        """Test accessing with an invalid index type raises an error."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seqlist = [seq1]
+        seq_set = sq.Seq_set(seqlist=seqlist)
+        with pytest.raises(sq.SeqError):
+            seq_set["invalid"]
+
+###################################################################################################
+
+class Test_Seq_set_setitem:
+
+    def test_setitem_valid_index(self):
+        """Test setting a Sequence object using a valid integer index."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTAA")
+        seqlist = [seq1, seq2]
+        seq_set = sq.Seq_set(seqlist=seqlist)
+
+        # Ensure initial sequence is seq2
+        assert seq_set[1] == seq2
+
+        # Set seq3 at index 1
+        seq_set[1] = seq3
+
+        # Verify that seq3 was set correctly
+        assert seq_set[1] == seq3
+
+    def test_setitem_non_integer_index(self):
+        """Test setting a Sequence object using a non-integer index raises SeqError."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seqlist = [seq1]
+        seq_set = sq.Seq_set(seqlist=seqlist)
+
+        # Attempt to set using a non-integer index
+        with pytest.raises(sq.SeqError, match="A set of sequences must be set using an integer index"):
+            seq_set["invalid_index"] = seq1
+
+    def test_setitem_non_sequence_object(self):
+        """Test setting a non-Sequence object raises ValueError."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seqlist = [seq1]
+        seq_set = sq.Seq_set(seqlist=seqlist)
+
+        # Attempt to set a non-sequence object at index 0
+        with pytest.raises(ValueError, match="Assigned value must be a Sequence object"):
+            seq_set[0] = "Not a sequence object"
+
+    def test_setitem_index_out_of_range(self):
+        """Test setting a Sequence object at an index out of range raises IndexError."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seqlist = [seq1]
+        seq_set = sq.Seq_set(seqlist=seqlist)
+
+        # Attempt to set a sequence at an index that is out of range
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        with pytest.raises(IndexError):
+            seq_set[2] = seq2  # Index 2 is out of range
+
+###################################################################################################
+
+class Test_Seq_set_eq:
+
+    def test_eq_identical_sets(self):
+        """Test equality between two identical Seq_set objects."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seqlist1 = [seq1, seq2]
+        seqlist2 = [seq1, seq2]
+        seq_set1 = sq.Seq_set(seqlist=seqlist1)
+        seq_set2 = sq.Seq_set(seqlist=seqlist2)
+        assert seq_set1 == seq_set2  # Both sets contain the same sequences
+
+    def test_eq_same_sequences_different_order(self):
+        """Test equality between Seq_set objects with same sequences in different order."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seqlist1 = [seq1, seq2]
+        seqlist2 = [seq2, seq1]  # Different order
+        seq_set1 = sq.Seq_set(seqlist=seqlist1)
+        seq_set2 = sq.Seq_set(seqlist=seqlist2)
+        assert seq_set1 == seq_set2  # Order should not matter
+
+    def test_eq_different_sequences(self):
+        """Test inequality between Seq_set objects with different sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTAA")
+        seqlist1 = [seq1, seq2]
+        seqlist2 = [seq1, seq3]  # Different sequences
+        seq_set1 = sq.Seq_set(seqlist=seqlist1)
+        seq_set2 = sq.Seq_set(seqlist=seqlist2)
+        assert seq_set1 != seq_set2  # Different content
+
+    def test_eq_different_sizes(self):
+        """Test inequality between Seq_set objects of different sizes."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seqlist1 = [seq1]
+        seqlist2 = [seq1, seq2]  # Different size
+        seq_set1 = sq.Seq_set(seqlist=seqlist1)
+        seq_set2 = sq.Seq_set(seqlist=seqlist2)
+        assert seq_set1 != seq_set2  # Different sizes
+
+    def test_eq_same_size_no_match(self):
+        """Test inequality between Seq_set objects of same size but no matching sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTAA")
+        seq4 = sq.DNA_sequence(name="seq4", seq="CCGG")
+        seqlist1 = [seq1, seq2]
+        seqlist2 = [seq3, seq4]  # No matching sequences
+        seq_set1 = sq.Seq_set(seqlist=seqlist1)
+        seq_set2 = sq.Seq_set(seqlist=seqlist2)
+        assert seq_set1 != seq_set2  # No matches
+
+###################################################################################################
