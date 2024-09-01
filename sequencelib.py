@@ -1368,7 +1368,8 @@ class Sequences_base(object):
         """Returns specified positions as Seq_alignment or Seq_set object (depending on class of self)"""
 
         # If slicesyntax is False: indexing starts at 1, and stop is included
-        # If rename or renamealn is True: start and stop indices added to seqnames or alignmentname
+        # If renamealn is True: start and stop indices added to alignmentname
+        # If rename is True: start and stop indices added to seqnames
         if aln_name is None:
             if aln_name_number:
                 aln_name = "{}_{}_{}".format(self.name, start, stop)
@@ -1392,7 +1393,7 @@ class Sequences_base(object):
     #######################################################################################
 
     def range(self, rangefrom, rangeto):
-        """Discards all symbols outside of range from sequences in set"""
+        """In-place selection of subsequences covering positions rangefrom:rangeto"""
 
         # Sanity check: rangeto > rangefrom ?
         if rangefrom > rangeto:
