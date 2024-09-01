@@ -1302,6 +1302,10 @@ class Sequences_base(object):
                 i += 1
                 fixname = newname + "_" + str(i)
             newname = fixname
+            
+        # Raise error if new name already exists and fix_dupnames is False
+        if newname in self.seqdict and not fix_dupnames:
+            raise SeqError("Duplicate sequence names: %s" % newname)
 
         if oldname in self.seqdict:
             if newname != oldname:
@@ -1311,8 +1315,9 @@ class Sequences_base(object):
                 del self.seqdict[oldname]
                 self.seqnamelist.remove(oldname)
                 self.seqnamelist.append(newname)
-        # else:
-        #     raise SeqError("No such sequence: %s" % oldname)
+        else:
+            raise SeqError("No such sequence: %s" % oldname)
+
     #######################################################################################
 
     def getseq(self, name):
