@@ -1291,6 +1291,10 @@ class Sequences_base(object):
     def changeseqname(self, oldname, newname, fix_dupnames=False):
         """Change the name of one sequence object from oldname to newname"""
 
+        # If oldname and newname are the same, do nothing
+        if oldname == newname:
+            return
+
         if newname in self.seqdict and fix_dupnames:
             i = 2
             fixname = newname + "_" + str(i)
@@ -1480,6 +1484,8 @@ class Sequences_base(object):
     def rename_numbered(self, basename, namefile=None):
         """Renames all sequences in collection to this form: basename_001, ..."""
 
+        if len(self) == 0:     # Python note: is this really best way to handle empty seqset?
+            return
         if namefile:
             transfile = open(namefile, "w")
         nfill = int(log(len(self)) / log(10)) + 1     # Number of digits required
