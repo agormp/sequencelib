@@ -2686,5 +2686,485 @@ class Test_Seq_set_revcomp:
 
 ###################################################################################################
 
+class Test_Seq_set_translate:
 
+    def test_translate_dna_sequences(self):
+        """Test translation of a collection of DNA sequences to protein sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATGCGT")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTACC")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
 
+        # Translate the sequence collection to protein sequences
+        prot_seq_set = seq_set.translate()
+
+        # Check that the translated sequences are correct
+        assert prot_seq_set.getseq("seq1").seq == "MR"
+        assert prot_seq_set.getseq("seq2").seq == "GT"
+
+    def test_translate_non_dna_sequences(self):
+        """Test translation on a non-DNA sequence collection (should raise an error)."""
+        seq1 = sq.Protein_sequence(name="seq1", seq="MVK")
+        seq_set = sq.Seq_set(seqtype="protein", seqlist=[seq1])
+
+        # Attempting to translate non-DNA sequences should raise an exception
+        with pytest.raises(sq.SeqError, match=r"Attempt to translate non-DNA. Sequence type is: protein"):
+            seq_set.translate()
+
+    def test_translate_empty_set(self):
+        """Test translation on an empty DNA sequence collection."""
+        seq_set = sq.Seq_set(seqtype="DNA")
+
+        # Translate the empty sequence collection
+        prot_seq_set = seq_set.translate()
+
+        # Check that the result is still an empty set
+        assert len(prot_seq_set) == 0
+
+    def test_translate_dna_sequences_different_frames(self):
+        """Test translation of a collection of DNA sequences with different reading frames."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATGCGTTCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTACCGTG")
+        seq_set = sq.Seq_set(seqtype="DNA", seqlist=[seq1, seq2])
+
+        # Translate the sequence collection to protein sequences using reading frame 2
+        prot_seq_set_rf2 = seq_set.translate(reading_frame=2)
+
+        # Check that the translated sequences are correct for reading frame 2
+        assert prot_seq_set_rf2.getseq("seq1").seq == "CV"
+        assert prot_seq_set_rf2.getseq("seq2").seq == "VP"
+
+###################################################################################################
+
+class Test_Seq_set_fasta:
+
+    def test_fasta_output_basic(self):
+        """Test fasta output for a basic set of DNA sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Generate FASTA format
+        fasta_output = seq_set.fasta()
+
+        # Check the generated FASTA format
+        expected_output = (
+            ">seq1\n"
+            "ATCG\n"
+            ">seq2\n"
+            "GGTA"
+        )
+        assert fasta_output == expected_output
+
+    def test_fasta_empty_set(self):
+        """Test fasta output for an empty set of sequences (should raise an error)."""
+        seq_set = sq.Seq_set()
+
+        # Attempting to create FASTA format for an empty set should raise an exception
+        with pytest.raises(sq.SeqError, match=r"No sequences in sequence set.  Can't create fasta"):
+            seq_set.fasta()
+
+    def test_fasta_output_with_comments(self):
+        """Test fasta output including comments."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG", comments="This is seq1")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA", comments="This is seq2")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Generate FASTA format with comments
+        fasta_output = seq_set.fasta(nocomments=False)
+
+        # Check the generated FASTA format including comments
+        expected_output = (
+            ">seq1 This is seq1\n"
+            "ATCG\n"
+            ">seq2 This is seq2\n"
+            "GGTA"
+        )
+        assert fasta_output == expected_output
+
+    def test_fasta_output_without_comments(self):
+        """Test fasta output excluding comments."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG", comments="This is seq1")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA", comments="This is seq2")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Generate FASTA format without comments
+        fasta_output = seq_set.fasta(nocomments=True)
+
+        # Check the generated FASTA format excluding comments
+        expected_output = (
+            ">seq1\n"
+            "ATCG\n"
+            ">seq2\n"
+            "GGTA"
+        )
+        assert fasta_output == expected_output
+
+    def test_fasta_output_custom_width(self):
+        """Test fasta output with a custom line width."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCGGGTACC")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTATTAGC")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Generate FASTA format with a custom width of 4
+        fasta_output = seq_set.fasta(width=4)
+
+        # Check the generated FASTA format with custom width
+        expected_output = (
+            ">seq1\n"
+            "ATCG\n"
+            "GGTA\n"
+            "CC\n"
+            ">seq2\n"
+            "GGTA\n"
+            "TTAG\n"
+            "C"
+        )
+        assert fasta_output == expected_output
+
+###################################################################################################
+
+class Test_Seq_set_how:
+
+    def test_how_output_basic(self):
+        """Test HOW format output for a basic set of DNA sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Generate HOW format
+        how_output = seq_set.how()
+
+        # Check the generated HOW format
+        expected_output = (
+            "     4 seq1\n"
+            "ATCG\n"
+            "....\n"
+            "     4 seq2\n"
+            "GGTA\n"
+            "...."
+        )
+        assert how_output == expected_output
+
+    def test_how_empty_set(self):
+        """Test HOW output for an empty set of sequences (should raise an error)."""
+        seq_set = sq.Seq_set()
+
+        # Attempting to create HOW format for an empty set should raise an exception
+        with pytest.raises(sq.SeqError, match=r"No sequences in sequence set.  Can't create HOW"):
+            seq_set.how()
+
+    def test_how_output_with_comments(self):
+        """Test HOW output including comments."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG", comments="This is seq1")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA", comments="This is seq2")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Generate HOW format with comments
+        how_output = seq_set.how(nocomments=False)
+
+        # Check the generated HOW format including comments
+        expected_output = (
+            "     4 seq1 This is seq1\n"
+            "ATCG\n"
+            "....\n"
+            "     4 seq2 This is seq2\n"
+            "GGTA\n"
+            "...."
+        )
+        assert how_output == expected_output
+
+###################################################################################################
+
+class Test_Seq_set_tab:
+
+    def test_tab_output_basic(self):
+        """Test TAB format output for a basic set of DNA sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Generate TAB format
+        tab_output = seq_set.tab()
+
+        # Check the generated TAB format
+        expected_output = (
+            "seq1\tATCG\t\t\n"
+            "seq2\tGGTA\t\t"
+        )
+        assert tab_output == expected_output
+
+    def test_tab_empty_set(self):
+        """Test TAB output for an empty set of sequences (should raise an error)."""
+        seq_set = sq.Seq_set()
+
+        # Attempting to create TAB format for an empty set should raise an exception
+        with pytest.raises(sq.SeqError, match=r"No sequences in sequence set.  Can't create TAB"):
+            seq_set.tab()
+
+    def test_tab_output_with_comments(self):
+        """Test TAB output including comments."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG", comments="This is seq1")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA", comments="This is seq2")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Generate TAB format with comments
+        tab_output = seq_set.tab(nocomments=False)
+
+        # Check the generated TAB format including comments
+        expected_output = (
+            "seq1\tATCG\t\tThis is seq1\n"
+            "seq2\tGGTA\t\tThis is seq2"
+        )
+        assert tab_output == expected_output
+
+###################################################################################################
+
+class Test_Seq_set_raw:
+
+    def test_raw_output_basic(self):
+        """Test RAW format output for a basic set of DNA sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Generate RAW format
+        raw_output = seq_set.raw()
+
+        # Check the generated RAW format
+        expected_output = (
+            "ATCG\n"
+            "GGTA"
+        )
+        assert raw_output == expected_output
+
+    def test_raw_empty_set(self):
+        """Test RAW output for an empty set of sequences (should raise an error)."""
+        seq_set = sq.Seq_set()
+
+        # Attempting to create RAW format for an empty set should raise an exception
+        with pytest.raises(sq.SeqError, match=r"No sequences in sequence set.  Can't create RAW"):
+            seq_set.raw()
+
+###################################################################################################
+###################################################################################################
+
+# Test classes for the Seq_alignment class
+
+###################################################################################################
+###################################################################################################
+
+class Test_Seq_alignment_init:
+
+    def test_default_initialization(self):
+        """Test the default initialization of a Seq_alignment object."""
+
+        # Instantiate a Seq_alignment object with default parameters
+        alignment = sq.Seq_alignment()
+
+        # Verify inherited attributes from Sequences_base
+        assert alignment.name == "alignment"  # Default name
+        assert alignment.seqdict == {}        # Should be an empty dictionary
+        assert alignment.seqnamelist == []    # Should be an empty list
+        assert alignment.seqtype is None      # Default seqtype should be None
+        assert alignment.alphabet is None     # Default alphabet should be None
+        assert alignment.ambigsymbols is None # Default ambiguity symbols should be None
+
+        # Verify Seq_alignment specific attributes
+        assert alignment.alignment is True    # Should be True indicating it is an alignment
+        assert alignment.seqpos2alignpos_cache == {}  # Should be an empty dictionary
+        assert alignment.alignpos2seqpos_cache == {}  # Should be an empty dictionary
+        assert alignment.annotation is None   # Default annotation should be None
+        assert alignment.partitions is None   # Default partitions should be None
+
+    def test_custom_initialization(self):
+        """Test the initialization of a Seq_alignment object with custom parameters."""
+
+        # Define custom name and seqtype
+        custom_name = "my_alignment"
+        custom_seqtype = "DNA"
+
+        # Instantiate a Seq_alignment object with custom parameters
+        alignment = sq.Seq_alignment(name=custom_name, seqtype=custom_seqtype)
+
+        # Verify inherited attributes from Sequences_base
+        assert alignment.name == custom_name  # Should match custom name
+        assert alignment.seqdict == {}        # Should be an empty dictionary
+        assert alignment.seqnamelist == []    # Should be an empty list
+        assert alignment.seqtype == custom_seqtype  # Should match custom seqtype
+        assert alignment.alphabet is not None       # Check that alphabet is set correctly based on seqtype
+        assert alignment.ambigsymbols is not None   # Check that ambiguity symbols are set correctly based on seqtype
+
+        # Verify Seq_alignment specific attributes
+        assert alignment.alignment is True    # Should be True indicating it is an alignment
+        assert alignment.seqpos2alignpos_cache == {}  # Should be an empty dictionary
+        assert alignment.alignpos2seqpos_cache == {}  # Should be an empty dictionary
+        assert alignment.annotation is None   # Default annotation should be None
+        assert alignment.partitions is None   # Default partitions should be None
+
+###################################################################################################
+
+class Test_Seq_alignment_copy_alignobject:
+
+    def test_copy_attributes(self):
+        """Test that copy_alignobject copies all attributes correctly."""
+
+        # Create an initial Seq_alignment object with custom settings
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        alignment = sq.Seq_alignment(name="test_alignment", seqtype="DNA")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+        alignment.annotation = "Test annotation"
+        alignment.partitions = [("test_alignment", 0, len(seq1), "DNA")]
+
+        # Copy the alignment object using copy_alignobject
+        copied_alignment = alignment.copy_alignobject()
+
+        # Verify that all attributes are copied correctly
+        assert copied_alignment.name == alignment.name
+        assert copied_alignment.seqdict == alignment.seqdict
+        assert copied_alignment.seqnamelist == alignment.seqnamelist
+        assert copied_alignment.alphabet == alignment.alphabet
+        assert copied_alignment.ambigsymbols == alignment.ambigsymbols
+        assert copied_alignment.alignment == alignment.alignment
+        assert copied_alignment.seqpos2alignpos_cache == alignment.seqpos2alignpos_cache
+        assert copied_alignment.alignpos2seqpos_cache == alignment.alignpos2seqpos_cache
+        assert copied_alignment.annotation == alignment.annotation
+        assert copied_alignment.partitions == alignment.partitions
+
+    def test_copy_independence(self):
+        """Test that the copied object is independent of the original object."""
+
+        # Create an initial Seq_alignment object with some sequences
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        alignment = sq.Seq_alignment(name="test_alignment", seqtype="DNA")
+        alignment.addseq(seq1)
+        alignment.annotation = "Test annotation"
+        alignment.partitions = [("test_alignment", 0, len(seq1), "DNA")]
+
+        # Copy the alignment object using copy_alignobject
+        copied_alignment = alignment.copy_alignobject()
+
+        # Modify the copied object
+        copied_alignment.name = "copied_alignment"
+        copied_alignment.seqnamelist.append("new_seq")
+        copied_alignment.alphabet.add("X")
+        copied_alignment.annotation = "Modified annotation"
+        copied_alignment.partitions[0] = ("modified_alignment", 0, 4, "DNA")
+
+        # Verify that the original object is not affected
+        assert alignment.name == "test_alignment"
+        assert "new_seq" not in alignment.seqnamelist
+        assert "X" not in alignment.alphabet
+        assert alignment.annotation == "Test annotation"
+        assert alignment.partitions == [("test_alignment", 0, 4, "DNA")]
+
+    def test_deepcopy_mutable_attributes(self):
+        """Test that mutable attributes are deeply copied."""
+
+        # Create an initial Seq_alignment object with sequences
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        alignment = sq.Seq_alignment(name="test_alignment", seqtype="DNA")
+        alignment.addseq(seq1)
+
+        # Copy the alignment object using copy_alignobject
+        copied_alignment = alignment.copy_alignobject()
+
+        # Modify mutable attributes in the copied object
+        copied_alignment.seqdict["seq1"].seq = "TTTT"
+        copied_alignment.seqnamelist[0] = "new_seq1"
+
+        # Verify that the original object's mutable attributes are not affected
+        assert alignment.seqdict["seq1"].seq == "ATCG"
+        assert alignment.seqnamelist[0] == "seq1"
+
+###################################################################################################
+
+class Test_Seq_alignment_addseq:
+
+    def test_addseq_first_sequence(self):
+        """Test adding the first sequence to an empty Seq_alignment object."""
+
+        # Create a DNA sequence
+        seq = sq.DNA_sequence(name="seq1", seq="ATCG")
+        alignment = sq.Seq_alignment()
+
+        # Add the first sequence to the alignment
+        alignment.addseq(seq)
+
+        # Verify that the sequence was added
+        assert alignment.seqdict["seq1"] == seq
+        assert alignment.seqnamelist == ["seq1"]
+
+        # Check that partitions are set correctly
+        assert alignment.partitions == [("alignment", 0, len(seq), seq.seqtype)]
+
+    def test_addseq_subsequent_sequence_same_length(self):
+        """Test adding subsequent sequences with the same length."""
+
+        # Create DNA sequences of the same length
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        alignment = sq.Seq_alignment()
+
+        # Add sequences to the alignment
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Verify that both sequences were added
+        assert alignment.seqdict["seq1"] == seq1
+        assert alignment.seqdict["seq2"] == seq2
+        assert alignment.seqnamelist == ["seq1", "seq2"]
+
+        # Check that partitions were not changed after the first sequence
+        assert alignment.partitions == [("alignment", 0, len(seq1), seq1.seqtype)]
+
+    def test_addseq_subsequent_sequence_different_length(self):
+        """Test adding a sequence of different length raises an error."""
+
+        # Create DNA sequences of different lengths
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTAC")
+        alignment = sq.Seq_alignment()
+
+        # Add the first sequence to the alignment
+        alignment.addseq(seq1)
+
+        # Adding a sequence of a different length should raise an exception
+        with pytest.raises(sq.SeqError, match=r"Not an alignment: these sequences have different lengths: seq2 and seq1"):
+            alignment.addseq(seq2)
+
+    def test_addseq_duplicate_name_with_silently_discard(self):
+        """Test adding a sequence with a duplicate name with silently_discard_dup_name=True."""
+
+        # Create DNA sequences
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq1", seq="GGTA")  # Same name as seq1
+        alignment = sq.Seq_alignment()
+
+        # Add the first sequence to the alignment
+        alignment.addseq(seq1)
+
+        # Add a sequence with the same name and silently discard duplicates
+        alignment.addseq(seq2, silently_discard_dup_name=True)
+
+        # Verify that the second sequence was not added (seq1 should remain unchanged)
+        assert len(alignment.seqdict) == 1
+        assert alignment.seqdict["seq1"] == seq1
+
+    def test_addseq_duplicate_name_without_silently_discard(self):
+        """Test adding a sequence with a duplicate name without silently_discard_dup_name."""
+
+        # Create DNA sequences
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq1", seq="GGTA")  # Same name as seq1
+        alignment = sq.Seq_alignment()
+
+        # Add the first sequence to the alignment
+        alignment.addseq(seq1)
+
+        # Adding a sequence with the same name without silently discarding should raise an exception
+        with pytest.raises(sq.SeqError, match=r"Duplicate sequence names: seq1"):
+            alignment.addseq(seq2, silently_discard_dup_name=False)
+
+###################################################################################################
