@@ -1549,7 +1549,10 @@ class Sequences_base(object):
     #######################################################################################
 
     def revcomp(self):
-        """Returns new sequence collection (of same type as original) reverse complemented"""
+        """If DNA: Returns new sequence collection (of same type as original) reverse complemented"""
+
+        if self.seqtype.lower() != "dna":
+            raise(SeqError(f"Attempt to reverse complement non-DNA. Sequence type is: {self.seqtype}"))
 
         revcompseqs = self.__class__()    # Create new object of same class as self (don't know which subclass we're in)
         for seq in self:
@@ -1564,8 +1567,8 @@ class Sequences_base(object):
         nucleotide in sequences. Translation includes as many full-length
         codons as possible."""
 
-        if not self.seqtype.lower() == "dna":
-            raise SeqError("Attempt to translate sequences of wrong type: {}".format(self.seqtype))
+        if self.seqtype.lower() != "dna":
+            raise SeqError(f"Attempt to translate non-DNA. Sequence type is: {self.seqtype}")
 
         protseqs = self.__class__(seqtype="protein")    # Create new object of same class as self (don't know which subclass we're in)
         for seq in self:
