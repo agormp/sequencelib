@@ -3168,3 +3168,87 @@ class Test_Seq_alignment_addseq:
             alignment.addseq(seq2, silently_discard_dup_name=False)
 
 ###################################################################################################
+
+class Test_Seq_alignment_appendalignment:
+    """Test suite for the appendalignment method in Seq_alignment."""
+
+    def test_appendalignment_basic(self):
+        """Test basic functionality of appending an alignment to another with matching sequence names."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        alignment1 = sq.Seq_alignment(name="alignment1", seqtype="DNA", seqlist=[seq1, seq2])
+
+        seq3 = sq.DNA_sequence(name="seq1", seq="CCGG")
+        seq4 = sq.DNA_sequence(name="seq2", seq="TTAA")
+        alignment2 = sq.Seq_alignment(name="alignment2", seqtype="DNA", seqlist=[seq3, seq4])
+
+        # Append alignment2 to alignment1
+        appended_alignment = alignment1.appendalignment(alignment2)
+
+        # Check that the sequences are concatenated correctly
+        assert appended_alignment.getseq("seq1").seq == "ATCGCCGG"
+        assert appended_alignment.getseq("seq2").seq == "GGTATTAA"
+        # Ensure that the partitions were updated correctly
+        assert appended_alignment.partitions == [("alignment1", 0, 4, "DNA"), ("alignment2", 4, 4, "DNA")]
+
+    def test_appendalignment_empty_self(self):
+        """Test appending to an empty alignment (should raise an error)."""
+        alignment1 = sq.Seq_alignment(name="alignment1")
+        seq3 = sq.DNA_sequence(name="seq1", seq="CCGG")
+        seq4 = sq.DNA_sequence(name="seq2", seq="TTAA")
+        alignment2 = sq.Seq_alignment(name="alignment2", seqlist=[seq3, seq4])
+
+        # Attempt to append to an empty alignment should raise SeqError
+        with pytest.raises(sq.SeqError, match="Can't append alignment to empty Seq_alignment object"):
+            alignment1.appendalignment(alignment2)
+
+    def test_appendalignment_mixed_seqtype(self):
+        """Test appending alignments of different sequence types resulting in mixed sequence type."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        alignment1 = sq.Seq_alignment(name="alignment1", seqlist=[seq1, seq2])
+
+        seq3 = sq.Protein_sequence(name="seq1", seq="MKFL")
+        seq4 = sq.Protein_sequence(name="seq2", seq="HISF")
+        alignment2 = sq.Seq_alignment(name="alignment2", seqlist=[seq3, seq4])
+
+        # Append alignments of different types
+        appended_alignment = alignment1.appendalignment(alignment2)
+
+        # Check that the resulting alignment is of mixed type
+        assert appended_alignment.seqtype == "mixed"
+        assert appended_alignment.getseq("seq1").seq == "ATCGMKFL"
+        assert appended_alignment.getseq("seq2").seq == "GGTAHISF"
+        # Ensure that the partitions were updated correctly
+        assert appended_alignment.partitions == [("alignment1", 0, 4, "DNA"), ("alignment2", 4, 4, "protein")]
+
+    def test_appendalignment_mismatched_names(self):
+        """Test appending alignments where sequence names do not match (should raise an error)."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        alignment1 = sq.Seq_alignment(name="alignment1", seqlist=[seq1, seq2])
+
+        seq3 = sq.DNA_sequence(name="seq3", seq="CCGG")  # Mismatched name
+        seq4 = sq.DNA_sequence(name="seq4", seq="TTAA")  # Mismatched name
+        alignment2 = sq.Seq_alignment(name="alignment2", seqlist=[seq3, seq4])
+
+        # Attempt to append alignments with mismatched names should raise SeqError
+        with pytest.raises(sq.SeqError, match="Sequences in files have different names. No match found for seq1"):
+            alignment1.appendalignment(alignment2)
+
+    def test_appendalignment_with_partitions(self):
+        """Test appending alignments and checking partition information."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        alignment1 = sq.Seq_alignment(name="alignment1", seqlist=[seq1])
+        alignment1.partitions = [("alignment1", 0, 4, "DNA")]
+
+        seq2 = sq.DNA_sequence(name="seq1", seq="GCTA")
+        alignment2 = sq.Seq_alignment(name="alignment2", seqlist=[seq2])
+        alignment2.partitions = [("alignment2", 0, 4, "DNA")]
+
+        appended_alignment = alignment1.appendalignment(alignment2)
+
+        # Ensure that the partitions were updated correctly
+        assert appended_alignment.partitions == [("alignment1", 0, 4, "DNA"), ("alignment2", 4, 4, "DNA")]
+        assert appended_alignment.getseq("seq1").seq == "ATCGGCTA"
+
