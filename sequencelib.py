@@ -1709,8 +1709,8 @@ class Seq_alignment(Sequences_base):
         Any user-added attributes are not copied. Similar to effect of copy.deepcopy"""
 
         obj = Seq_alignment(name=self.name, seqtype=self.seqtype)
-        obj.seqdict = self.seqdict.copy()
-        obj.seqnamelist = self.seqnamelist.copy()
+        obj.seqdict = copy.deepcopy(self.seqdict)   # Python note: maybe customize for efficiency?
+        obj.seqnamelist = copy.deepcopy(self.seqnamelist) # Python note: maybe customize for efficiency?
         obj.alphabet = self.alphabet.copy()
         obj.ambigsymbols = self.ambigsymbols.copy()
         obj.alignment = True
