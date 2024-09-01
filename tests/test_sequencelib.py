@@ -1470,3 +1470,300 @@ class Test_Seq_set_ne:
         assert seq_set1 != seq_set2  # No matches, so should be True
 
 ###################################################################################################
+
+class Test_Seq_set_str:
+
+    def test_str_empty_set(self):
+        """Test string representation of an empty Seq_set."""
+        seq_set = sq.Seq_set()
+        assert str(seq_set) == ""  # Empty set should return an empty string
+
+    def test_str_single_sequence(self):
+        """Test string representation of a Seq_set with a single sequence."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq_set = sq.Seq_set(seqlist=[seq1])
+        expected_output = ">seq1\nATCG"
+        assert str(seq_set) == expected_output
+
+    def test_str_multiple_sequences(self):
+        """Test string representation of a Seq_set with multiple sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+        expected_output = ">seq1\nATCG\n>seq2\nGGTA"
+        assert str(seq_set) == expected_output
+
+    def test_str_sequence_with_gaps(self):
+        """Test string representation of a Seq_set with sequences containing gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="A-T-C-G")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GG--TA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+        expected_output = ">seq1\nA-T-C-G\n>seq2\nGG--TA"
+        assert str(seq_set) == expected_output
+
+###################################################################################################
+
+class Test_Seq_set_sortnames:
+
+    def test_sortnames_default(self):
+        """Test sorting sequence names in ascending order."""
+        seq1 = sq.DNA_sequence(name="seqB", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seqA", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seqC", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Before sorting
+        assert seq_set.seqnamelist == ["seqB", "seqA", "seqC"]
+
+        # Sort names in ascending order
+        seq_set.sortnames()
+
+        # After sorting
+        assert seq_set.seqnamelist == ["seqA", "seqB", "seqC"]
+
+    def test_sortnames_reverse(self):
+        """Test sorting sequence names in descending order."""
+        seq1 = sq.DNA_sequence(name="seqB", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seqA", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seqC", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Before sorting
+        assert seq_set.seqnamelist == ["seqB", "seqA", "seqC"]
+
+        # Sort names in descending order
+        seq_set.sortnames(reverse=True)
+
+        # After sorting
+        assert seq_set.seqnamelist == ["seqC", "seqB", "seqA"]
+
+    def test_sortnames_empty_set(self):
+        """Test sorting on an empty Seq_set."""
+        seq_set = sq.Seq_set()
+        seq_set.sortnames()  # Sorting an empty set should not cause any errors
+        assert seq_set.seqnamelist == []
+
+    def test_sortnames_single_sequence(self):
+        """Test sorting on a Seq_set with a single sequence."""
+        seq1 = sq.DNA_sequence(name="seqA", seq="ATCG")
+        seq_set = sq.Seq_set(seqlist=[seq1])
+        seq_set.sortnames()  # Sorting a single sequence should not change anything
+        assert seq_set.seqnamelist == ["seqA"]
+
+###################################################################################################
+
+class Test_Seq_set_addseq:
+
+    def test_addseq_new_sequence(self):
+        """Test adding a new sequence to Seq_set."""
+        seq_set = sq.Seq_set()
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+
+        # Before adding, the set should be empty
+        assert len(seq_set) == 0
+
+        # Add new sequence
+        seq_set.addseq(seq1)
+
+        # After adding, the set should contain one sequence
+        assert len(seq_set) == 1
+        assert seq_set.seqnamelist == ["seq1"]
+        assert seq_set.seqdict["seq1"] == seq1
+
+    def test_addseq_duplicate_sequence_name_exception(self):
+        """Test adding a duplicate sequence name raises an exception when silently_discard_dup_name is False."""
+        seq_set = sq.Seq_set()
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq1", seq="GGTA")  # Duplicate name
+
+        # Add first sequence
+        seq_set.addseq(seq1)
+
+        # Adding a sequence with a duplicate name should raise an exception
+        with pytest.raises(sq.SeqError, match="Duplicate sequence names: seq1"):
+            seq_set.addseq(seq2)
+
+    def test_addseq_duplicate_sequence_name_silent(self):
+        """Test adding a duplicate sequence name silently discards the sequence when silently_discard_dup_name is True."""
+        seq_set = sq.Seq_set()
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq1", seq="GGTA")  # Duplicate name
+
+        # Add first sequence
+        seq_set.addseq(seq1)
+
+        # Adding a sequence with a duplicate name should not raise an exception and should be silently discarded
+        seq_set.addseq(seq2, silently_discard_dup_name=True)
+
+        # The set should still only contain the first sequence
+        assert len(seq_set) == 1
+        assert seq_set.seqdict["seq1"] == seq1
+
+    def test_addseq_set_seqtype_on_first_add(self):
+        """Test setting seqtype, alphabet, and ambigsymbols when adding the first sequence."""
+        seq_set = sq.Seq_set()
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+
+        # Before adding, seqtype, alphabet, and ambigsymbols should be None
+        assert seq_set.seqtype is None
+        assert seq_set.alphabet is None
+        assert seq_set.ambigsymbols is None
+
+        # Add new sequence
+        seq_set.addseq(seq1)
+
+        # After adding the first sequence, seqtype, alphabet, and ambigsymbols should be set
+        assert seq_set.seqtype == seq1.seqtype
+        assert seq_set.alphabet == seq1.alphabet
+        assert seq_set.ambigsymbols == seq1.ambigsymbols
+
+    def test_addseq_type_consistency_check(self):
+        """Test adding a sequence with a different seqtype raises an exception."""
+        seq_set = sq.Seq_set()
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.Protein_sequence(name="seq2", seq="MKV")  # Different seqtype
+
+        # Add first sequence (DNA)
+        seq_set.addseq(seq1)
+
+        # Adding a sequence with a different seqtype should raise an exception
+        with pytest.raises(sq.SeqError, match="Mismatch between sequence types: DNA vs. protein"):
+            seq_set.addseq(seq2)
+
+###################################################################################################
+
+class Test_Seq_set_addseqset:
+
+    def test_addseqset_all_new_sequences(self):
+        """Test adding all new sequences from another Seq_set."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTAA")
+        seq4 = sq.DNA_sequence(name="seq4", seq="CCGG")
+        
+        seq_set1 = sq.Seq_set(seqlist=[seq1, seq2])
+        seq_set2 = sq.Seq_set(seqlist=[seq3, seq4])
+
+        # Add all sequences from seq_set2 to seq_set1
+        seq_set1.addseqset(seq_set2)
+
+        # Verify all sequences are added correctly
+        assert len(seq_set1) == 4
+        assert seq_set1.seqnamelist == ["seq1", "seq2", "seq3", "seq4"]
+
+    def test_addseqset_with_duplicates_exception(self):
+        """Test adding sequences with duplicates raises exception when silently_discard_dup_name is False."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq1", seq="TTAA")  # Duplicate name
+
+        seq_set1 = sq.Seq_set(seqlist=[seq1, seq2])
+        seq_set2 = sq.Seq_set(seqlist=[seq3])
+
+        # Adding sequences with duplicates should raise an exception
+        with pytest.raises(sq.SeqError, match="Duplicate sequence names: seq1"):
+            seq_set1.addseqset(seq_set2)
+
+    def test_addseqset_with_duplicates_silent(self):
+        """Test adding sequences with duplicates silently discards them when silently_discard_dup_name is True."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq1", seq="TTAA")  # Duplicate name
+
+        seq_set1 = sq.Seq_set(seqlist=[seq1, seq2])
+        seq_set2 = sq.Seq_set(seqlist=[seq3])
+
+        # Adding sequences with duplicates should not raise an exception when silently_discard_dup_name is True
+        seq_set1.addseqset(seq_set2, silently_discard_dup_name=True)
+
+        # Verify that duplicate was not added
+        assert len(seq_set1) == 2
+        assert seq_set1.seqnamelist == ["seq1", "seq2"]
+
+###################################################################################################
+
+class Test_Seq_set_remseq:
+
+    def test_remseq_existing_sequence(self):
+        """Test removing an existing sequence by name."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Before removal, the set should contain two sequences
+        assert len(seq_set) == 2
+
+        # Remove sequence by name
+        seq_set.remseq("seq1")
+
+        # After removal, the set should contain only one sequence
+        assert len(seq_set) == 1
+        assert "seq1" not in seq_set.seqnamelist
+        assert "seq1" not in seq_set.seqdict
+        assert seq_set.seqnamelist == ["seq2"]
+
+    def test_remseq_nonexistent_sequence(self):
+        """Test removing a non-existent sequence raises an exception."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq_set = sq.Seq_set(seqlist=[seq1])
+
+        # Attempt to remove a sequence that does not exist should raise an exception
+        with pytest.raises(sq.SeqError, match="No such sequence: seq2"):
+            seq_set.remseq("seq2")
+
+###################################################################################################
+
+class Test_Seq_set_remseqs:
+
+    def test_remseqs_existing_sequences(self):
+        """Test removing multiple existing sequences by their names."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Before removal, the set should contain three sequences
+        assert len(seq_set) == 3
+
+        # Remove multiple sequences by their names
+        seq_set.remseqs(["seq1", "seq3"])
+
+        # After removal, the set should contain one sequence
+        assert len(seq_set) == 1
+        assert "seq1" not in seq_set.seqnamelist
+        assert "seq3" not in seq_set.seqnamelist
+        assert seq_set.seqnamelist == ["seq2"]
+
+    def test_remseqs_some_nonexistent_sequences(self):
+        """Test removing some existing and some non-existent sequences raises an exception."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Attempt to remove sequences where one does not exist should raise an exception
+        with pytest.raises(sq.SeqError, match="No such sequence: seq3"):
+            seq_set.remseqs(["seq1", "seq3"])
+
+    def test_remseqs_all_nonexistent_sequences(self):
+        """Test removing all non-existent sequences raises an exception."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq_set = sq.Seq_set(seqlist=[seq1])
+
+        # Attempt to remove sequences that do not exist should raise an exception
+        with pytest.raises(sq.SeqError, match="No such sequence: seq2"):
+            seq_set.remseqs(["seq2", "seq3"])
+
+    def test_remseqs_empty_namelist(self):
+        """Test removing sequences with an empty namelist does nothing."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Removing with an empty namelist should not change anything
+        seq_set.remseqs([])
+
+        # The set should still contain the original sequences
+        assert len(seq_set) == 2
+        assert seq_set.seqnamelist == ["seq1", "seq2"]
+
+###################################################################################################
