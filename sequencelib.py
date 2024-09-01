@@ -1685,7 +1685,7 @@ class Seq_alignment(Sequences_base):
 
     #######################################################################################
 
-    def __init__(self, name="alignment", seqtype=None):
+    def __init__(self, name="alignment", seqtype=None, seqlist=None):
 
         # Attributes set in baseclass:
         # self.name
@@ -1701,6 +1701,10 @@ class Seq_alignment(Sequences_base):
         self.alignpos2seqpos_cache = {}
         self.annotation = None
         self.partitions = None  # Set when adding sequences and appending alignments
+        
+        if seqlist:
+            for seq in seqlist:
+                self.addseq(seq)
 
     ###############################################################################################
 
