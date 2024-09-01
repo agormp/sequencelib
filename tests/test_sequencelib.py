@@ -1413,3 +1413,60 @@ class Test_Seq_set_eq:
         assert seq_set1 != seq_set2  # No matches
 
 ###################################################################################################
+
+class Test_Seq_set_ne:
+
+    def test_ne_identical_sets(self):
+        """Test inequality between two identical Seq_set objects (should be False)."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seqlist1 = [seq1, seq2]
+        seqlist2 = [seq1, seq2]
+        seq_set1 = sq.Seq_set(seqlist=seqlist1)
+        seq_set2 = sq.Seq_set(seqlist=seqlist2)
+        assert not (seq_set1 != seq_set2)  # Both sets contain the same sequences, so should be False
+
+    def test_ne_same_sequences_different_order(self):
+        """Test inequality between Seq_set objects with same sequences in different order (should be False)."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seqlist1 = [seq1, seq2]
+        seqlist2 = [seq2, seq1]  # Different order
+        seq_set1 = sq.Seq_set(seqlist=seqlist1)
+        seq_set2 = sq.Seq_set(seqlist=seqlist2)
+        assert not (seq_set1 != seq_set2)  # Order should not matter, so should be False
+
+    def test_ne_different_sequences(self):
+        """Test inequality between Seq_set objects with different sequences (should be True)."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTAA")
+        seqlist1 = [seq1, seq2]
+        seqlist2 = [seq1, seq3]  # Different sequences
+        seq_set1 = sq.Seq_set(seqlist=seqlist1)
+        seq_set2 = sq.Seq_set(seqlist=seqlist2)
+        assert seq_set1 != seq_set2  # Different content, so should be True
+
+    def test_ne_different_sizes(self):
+        """Test inequality between Seq_set objects of different sizes (should be True)."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seqlist1 = [seq1]
+        seqlist2 = [seq1, seq2]  # Different size
+        seq_set1 = sq.Seq_set(seqlist=seqlist1)
+        seq_set2 = sq.Seq_set(seqlist=seqlist2)
+        assert seq_set1 != seq_set2  # Different sizes, so should be True
+
+    def test_ne_same_size_no_match(self):
+        """Test inequality between Seq_set objects of same size but no matching sequences (should be True)."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTAA")
+        seq4 = sq.DNA_sequence(name="seq4", seq="CCGG")
+        seqlist1 = [seq1, seq2]
+        seqlist2 = [seq3, seq4]  # No matching sequences
+        seq_set1 = sq.Seq_set(seqlist=seqlist1)
+        seq_set2 = sq.Seq_set(seqlist=seqlist2)
+        assert seq_set1 != seq_set2  # No matches, so should be True
+
+###################################################################################################
