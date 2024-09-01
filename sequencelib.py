@@ -268,6 +268,8 @@ class Sequence(object):
 
     def __getitem__(self, index):
         """Implements indexing, slicing, and iteration for sequences"""
+        
+        # Python note: should this return new Sequence object instead?
 
         return self.seq[index]
 
