@@ -2649,3 +2649,42 @@ class Test_Seq_set_transname:
         assert seq_set.getnames() == ["newseq1", "seq2"]
 
 ###################################################################################################
+
+class Test_Seq_set_revcomp:
+
+    def test_revcomp_dna_sequences(self):
+        """Test reverse complement on a collection of DNA sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Get the reverse complement sequence collection
+        revcomp_seq_set = seq_set.revcomp()
+
+        # Check that the reverse complements are correct
+        assert revcomp_seq_set.getseq("seq1_revcomp").seq == "CGAT"
+        assert revcomp_seq_set.getseq("seq2_revcomp").seq == "TACC"
+
+    def test_revcomp_non_dna_sequences(self):
+        """Test reverse complement on a non-DNA sequence collection (should raise an error)."""
+        seq1 = sq.Protein_sequence(name="seq1", seq="MVK")
+        seq_set = sq.Seq_set(seqlist=[seq1])
+
+        # Attempting to reverse complement non-DNA sequences should raise an exception
+        with pytest.raises(sq.SeqError, match=r"Attempt to reverse complement non-DNA. Sequence type is: protein"):
+            seq_set.revcomp()
+
+    def test_revcomp_empty_set(self):
+        """Test reverse complement on an empty sequence collection."""
+        seq_set = sq.Seq_set(seqtype="DNA")
+
+        # Get the reverse complement sequence collection
+        revcomp_seq_set = seq_set.revcomp()
+
+        # Check that the result is still an empty set
+        assert len(revcomp_seq_set) == 0
+
+###################################################################################################
+
+
+
