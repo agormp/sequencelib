@@ -1191,30 +1191,31 @@ class Sequences_base(object):
 
         # If all sequences match, return True
         return True
+        
+    ############################################################################################
     
-    #######################################################################################
-
     def __ne__(self, other):
         """Implements inequality check between sequence collections"""
 
-        # __eq__ does not cover use of != operator, so this explicitly has to be implemented
-        # Two sequence collections are identical if (1) they have same size, and (2) every sequence
-        # in collection has a match in collection 2. Note: sequence names can be different
+        # Two sequence collections are not identical if (1) they have different sizes, or (2) any sequence
+        # in one collection does not have a match in the other collection.
         if len(self) != len(other):
             return True
 
-        else:
-            # For each seq in 1, compare to seqs in 2.
-            # If match found: move on to next seq in 1. If no match: return True
-            for seq1 in self:
-                for seq2 in other:
-                    if seq1 == seq2:
-                        break
+        # For each seq in self, compare to seqs in other.
+        # If no match is found for any sequence in self, return True.
+        for seq1 in self:
+            match_found = False
+            for seq2 in other:
+                if seq1 == seq2:
+                    match_found = True
+                    break
+            if not match_found:
                 return True
 
-        # If we fell off loop: collections must be identical. Return False
+        # If all sequences have a match, return False
         return False
-
+    
     #######################################################################################
 
     def __str__(self):
