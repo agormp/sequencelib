@@ -1399,11 +1399,15 @@ class Sequences_base(object):
         if rangefrom > rangeto:
             raise SeqError("End-of-range index is higher than start-of-range index")
 
-        for seq in self:
+        # Update each sequence in the set directly
+        for seq_name in self.seqnamelist:
+            seq = self.seqdict[seq_name]
+
             if rangeto > len(seq):
                 raise SeqError("Range exceeds length of sequence %s: %d" % (seq.name, len(seq)))
             else:
-                seq = seq[rangefrom:rangeto]
+                # Update the sequence directly
+                self.seqdict[seq_name].seq = seq.seq[rangefrom:rangeto]
 
     #######################################################################################
 
