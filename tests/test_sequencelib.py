@@ -2532,3 +2532,120 @@ class Test_Seq_set_rename_numbered:
         assert seq_set.getnames() == expected_names
 
 ###################################################################################################
+
+class Test_Seq_set_rename_regexp:
+
+    def test_rename_regexp_basic(self):
+        """Test renaming sequence names using a simple regex pattern."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Rename sequences using regex
+        seq_set.rename_regexp(old_regex=r"s..", new_string="sample")
+
+        # Check that names have been renamed correctly
+        assert seq_set.getnames() == ["sample1", "sample2", "sample3"]
+
+    def test_rename_regexp_no_match(self):
+        """Test renaming sequence names with a regex pattern that matches nothing."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Rename sequences with a pattern that matches nothing
+        seq_set.rename_regexp(old_regex=r"xyz", new_string="sample")
+
+        # Check that names have not changed
+        assert seq_set.getnames() == ["seq1", "seq2", "seq3"]
+
+    def test_rename_regexp_name_clash(self):
+        """Test renaming sequence names where a name clash occurs."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq_2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq_3", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Attempt to rename sequences in a way that will cause a name clash
+        with pytest.raises(sq.SeqError, match=r"Name clash during renaming by regular expression:"):
+            seq_set.rename_regexp(old_regex=r"_\d", new_string="1")
+
+    def test_rename_regexp_with_namefile(self, tmp_path):
+        """Test renaming sequence names using regex and writing changes to a file."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Create a temporary file path
+        namefile = tmp_path / "name_changes.txt"
+
+        # Rename sequences using regex and write to the file
+        seq_set.rename_regexp(old_regex=r"seq", new_string="sample", namefile=str(namefile))
+
+        # Check that names have been renamed correctly
+        assert seq_set.getnames() == ["sample1", "sample2", "sample3"]
+
+        # Verify contents of the namefile
+        with open(namefile, "r") as f:
+            lines = f.readlines()
+            assert lines == ["sample1\tseq1\n", "sample2\tseq2\n", "sample3\tseq3\n"]
+
+###################################################################################################
+
+class Test_Seq_set_transname:
+
+    def test_transname_basic(self, tmp_path):
+        """Test translating names using a namefile with oldname/newname pairs."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Create a temporary namefile with oldname/newname pairs
+        namefile = tmp_path / "name_changes.txt"
+        with open(namefile, "w") as f:
+            f.write("seq1\tsample1\n")
+            f.write("seq2\tsample2\n")
+            f.write("seq3\tsample3\n")
+
+        # Translate names using the namefile
+        seq_set.transname(namefile=str(namefile))
+
+        # Check that names have been translated correctly
+        assert seq_set.getnames() == ["sample1", "sample2", "sample3"]
+
+    def test_transname_nonexistent_name(self, tmp_path):
+        """Test translating names when a name in the namefile does not exist in the collection."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq_set = sq.Seq_set(seqlist=[seq1])
+
+        # Create a temporary namefile with an oldname that does not exist in the collection
+        namefile = tmp_path / "name_changes.txt"
+        with open(namefile, "w") as f:
+            f.write("nonexistent_seq\tnewname\n")
+
+        # Attempt to translate names using the namefile
+        with pytest.raises(sq.SeqError, match=r"No sequence with this name: nonexistent_seq"):
+            seq_set.transname(namefile=str(namefile))
+
+    def test_transname_partial_translation(self, tmp_path):
+        """Test translating names where only some names are translated."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Create a temporary namefile with only one oldname/newname pair
+        namefile = tmp_path / "name_changes.txt"
+        with open(namefile, "w") as f:
+            f.write("seq1\tnewseq1\n")
+
+        # Translate names using the namefile
+        seq_set.transname(namefile=str(namefile))
+
+        # Check that names have been translated correctly
+        assert seq_set.getnames() == ["newseq1", "seq2"]
+
+###################################################################################################
