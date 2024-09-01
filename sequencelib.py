@@ -1308,13 +1308,12 @@ class Sequences_base(object):
             raise SeqError("Duplicate sequence names: %s" % newname)
 
         if oldname in self.seqdict:
-            if newname != oldname:
-                seq = self.seqdict[oldname]
-                seq.name = newname
-                self.seqdict[newname] = seq
-                del self.seqdict[oldname]
-                self.seqnamelist.remove(oldname)
-                self.seqnamelist.append(newname)
+            seq = self.seqdict[oldname]
+            seq.name = newname
+            index = self.seqnamelist.index(oldname)
+            self.seqnamelist[index] = newname
+            self.seqdict[newname] = seq
+            del self.seqdict[oldname]
         else:
             raise SeqError("No such sequence: %s" % oldname)
 
