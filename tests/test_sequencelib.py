@@ -4,6 +4,8 @@ import random
 import re
 import numpy as np
 import collections
+from collections import Counter
+
 
 # Note: I could use fixtures to make the testing code much shorter (sharing a few instances
 # of DNA sequences for many test functions etc instead of setting up new test data for each
@@ -1765,5 +1767,768 @@ class Test_Seq_set_remseqs:
         # The set should still contain the original sequences
         assert len(seq_set) == 2
         assert seq_set.seqnamelist == ["seq1", "seq2"]
+
+###################################################################################################
+
+class Test_Seq_set_changeseqname:
+
+    def test_changeseqname_to_new_name(self):
+        """Test changing a sequence name to a new unique name."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq_set = sq.Seq_set(seqlist=[seq1])
+
+        # Before changing, the name should be "seq1"
+        assert seq1.name == "seq1"
+        assert "seq1" in seq_set.seqnamelist
+        assert "seq1" in seq_set.seqdict
+
+        # Change name to "seq2"
+        seq_set.changeseqname("seq1", "seq2")
+
+        # After changing, the name should be updated
+        assert seq1.name == "seq2"
+        assert "seq2" in seq_set.seqnamelist
+        assert "seq2" in seq_set.seqdict
+        assert "seq1" not in seq_set.seqnamelist
+        assert "seq1" not in seq_set.seqdict
+
+    def test_changeseqname_to_existing_name_without_fix(self):
+        """Test changing a sequence name to an existing name without fixing duplicates (should raise an error)."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Attempting to change "seq1" to "seq2" should raise an exception
+        with pytest.raises(sq.SeqError):
+            seq_set.changeseqname("seq1", "seq2")
+
+    def test_changeseqname_to_existing_name_with_fix(self):
+        """Test changing a sequence name to an existing name with fix_dupnames=True."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Change name to "seq2", which is already taken, but allow fixing duplicates
+        seq_set.changeseqname("seq1", "seq2", fix_dupnames=True)
+
+        # The name should have been changed to "seq2_2"
+        assert seq1.name == "seq2_2"
+        assert "seq2_2" in seq_set.seqnamelist
+        assert "seq2_2" in seq_set.seqdict
+        assert "seq1" not in seq_set.seqnamelist
+        assert "seq1" not in seq_set.seqdict
+
+    def test_changeseqname_nonexistent_oldname(self):
+        """Test changing the name of a non-existent sequence (should raise an error)."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq_set = sq.Seq_set(seqlist=[seq1])
+
+        # Attempting to change a name that does not exist should raise an exception
+        with pytest.raises(sq.SeqError, match="No such sequence: seq3"):
+            seq_set.changeseqname("seq3", "seq4")
+
+    def test_changeseqname_same_name(self):
+        """Test changing a sequence name to the same name (should do nothing)."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq_set = sq.Seq_set(seqlist=[seq1])
+
+        # Change name to the same name "seq1"
+        seq_set.changeseqname("seq1", "seq1")
+
+        # The name should remain unchanged
+        assert seq1.name == "seq1"
+        assert "seq1" in seq_set.seqnamelist
+        assert "seq1" in seq_set.seqdict
+
+###################################################################################################
+
+class Test_Seq_set_getseq:
+
+    def test_getseq_existing_sequence(self):
+        """Test retrieving an existing sequence by name."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Retrieve existing sequence
+        result = seq_set.getseq("seq1")
+
+        # Check that the returned object is the correct sequence
+        assert result == seq1
+        assert result.seq == "ATCG"
+        assert result.name == "seq1"
+
+    def test_getseq_nonexistent_sequence(self):
+        """Test retrieving a non-existent sequence raises an exception."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq_set = sq.Seq_set(seqlist=[seq1])
+
+        # Attempt to retrieve a sequence that does not exist
+        with pytest.raises(sq.SeqError, match="No such sequence: seq2"):
+            seq_set.getseq("seq2")
+
+###################################################################################################
+
+class Test_Seq_set_subset:
+
+    def test_subset_with_existing_names(self):
+        """Test creating a subset with existing sequence names."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Create a subset with specific names
+        subset = seq_set.subset(["seq1", "seq3"])
+
+        # Check the subset contains only the specified sequences
+        assert len(subset) == 2
+        assert subset.seqnamelist == ["seq1", "seq3"]
+        assert subset.seqdict["seq1"] == seq1
+        assert subset.seqdict["seq3"] == seq3
+        assert "seq2" not in subset.seqnamelist
+        assert "seq2" not in subset.seqdict
+
+    def test_subset_with_nonexistent_name(self):
+        """Test creating a subset with a name that does not exist in the sequence collection raises an exception."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Attempt to create a subset with a name that does not exist
+        with pytest.raises(sq.SeqError, match="Requested subset contains names that are not in sequence collection: {'seq3'}"):
+            seq_set.subset(["seq1", "seq3"])
+
+    def test_subset_with_empty_namelist(self):
+        """Test creating a subset with an empty namelist returns an empty Seq_set."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Create a subset with an empty namelist
+        subset = seq_set.subset([])
+
+        # Check that the subset is empty
+        assert len(subset) == 0
+        assert subset.seqnamelist == []
+        assert subset.seqdict == {}
+
+###################################################################################################
+
+class Test_Seq_set_subsample:
+
+    def test_subsample_valid_size(self):
+        """Test subsampling with a valid sample size."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTAA")
+        seq4 = sq.DNA_sequence(name="seq4", seq="CCGG")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3, seq4])
+
+        # Subsample with a sample size of 2
+        subsample = seq_set.subsample(2)
+
+        # Check that the subsample contains exactly 2 sequences
+        assert len(subsample) == 2
+        assert set(subsample.seqnamelist).issubset(set(seq_set.seqnamelist))
+
+    def test_subsample_full_size(self):
+        """Test subsampling with a sample size equal to the full size of the set."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Subsample with a sample size equal to the full size of the set
+        subsample = seq_set.subsample(2)
+
+        # Check that the subsample contains all sequences
+        assert len(subsample) == 2
+        assert set(subsample.seqnamelist) == set(seq_set.seqnamelist)
+
+    def test_subsample_larger_than_set(self):
+        """Test subsampling with a sample size larger than the total size of the set."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq_set = sq.Seq_set(seqlist=[seq1])
+
+        # Attempt to subsample with a size larger than the set should raise an exception
+        with pytest.raises(sq.SeqError, match="Requested samplesize larger than full data set"):
+            seq_set.subsample(2)
+
+    def test_subsample_negative_size(self):
+        """Test subsampling with a negative sample size."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq_set = sq.Seq_set(seqlist=[seq1])
+
+        # Attempt to subsample with a negative size should raise an exception
+        with pytest.raises(sq.SeqError, match="Requested samplesize is negative - must be positive integer"):
+            seq_set.subsample(-1)
+
+    def test_subsample_zero_size(self):
+        """Test subsampling with a sample size of zero (should return an empty set)."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Subsample with a sample size of zero
+        subsample = seq_set.subsample(0)
+
+        # Check that the subsample is empty
+        assert len(subsample) == 0
+        assert subsample.seqnamelist == []
+        assert subsample.seqdict == {}
+
+###################################################################################################
+
+class Test_Seq_set_subseq:
+
+    def test_subseq_valid_range_slicesyntax_true(self):
+        """Test subseq with a valid range using slicesyntax=True (0-based indexing)."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCGGCTA")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTACCGT")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Extract subseq from index 2 to 6 using slicesyntax=True (0-based)
+        subseq_set = seq_set.subseq(start=2, stop=6, slicesyntax=True)
+
+        # Check the subsequences
+        assert len(subseq_set) == 2
+        assert subseq_set.getseq("seq1_2_6").seq == "CGGC"  # 0-based indexing; slice includes start and excludes stop
+        assert subseq_set.getseq("seq2_2_6").seq == "TACC"  # 0-based indexing
+
+    def test_subseq_valid_range_slicesyntax_false(self):
+        """Test subseq with a valid range using slicesyntax=False (1-based inclusive indexing)."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCGGCTA")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTACCGT")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Extract subseq from index 2 to 6 using slicesyntax=False (1-based)
+        subseq_set = seq_set.subseq(start=2, stop=6, slicesyntax=False)
+
+        # Check the subsequences
+        assert len(subseq_set) == 2
+        assert subseq_set.getseq("seq1_2_6").seq == "TCGGC"  # 1-based indexing; includes both start and stop
+        assert subseq_set.getseq("seq2_2_6").seq == "GTACC"  # 1-based indexing
+
+    def test_subseq_start_stop_out_of_bounds(self):
+        """Test subseq with start and stop indices out of bounds (should raise an error)."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCGGCTA")
+        seq_set = sq.Seq_set(seqlist=[seq1])
+
+        # Attempt to extract subseq with out-of-bounds indices
+        with pytest.raises(sq.SeqError):
+            seq_set.subseq(start=10, stop=15)
+
+    def test_subseq_with_rename_sequences_false(self):
+        """Test subseq with renaming the sequences (rename=False)."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCGGCTA")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTACCGT")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Extract subseq and rename sequences
+        subseq_set = seq_set.subseq(start=2, stop=6, slicesyntax=True, rename=False)
+
+        # Check the renamed sequences
+        assert len(subseq_set) == 2
+        assert subseq_set.getseq("seq1").seq == "CGGC"  # 0-based, not renamed
+        assert subseq_set.getseq("seq2").seq == "TACC"  # 0-based, not renamed
+
+    def test_subseq_with_custom_aln_name(self):
+        """Test subseq with a custom alignment name."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCGGCTA")
+        seq_set = sq.Seq_set(seqlist=[seq1])
+
+        # Extract subseq with a custom alignment name
+        subseq_set = seq_set.subseq(start=2, stop=6, slicesyntax=True, aln_name="custom_name")
+
+        # Check that the alignment name is set correctly
+        assert subseq_set.name == "custom_name"
+
+###################################################################################################
+
+class Test_Seq_set_getnames:
+
+    def test_getnames(self):
+        """Test retrieving the list of sequence names from the set."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Get names of all sequences in the set
+        names = seq_set.getnames()
+
+        # Check that the returned list of names is correct
+        assert names == ["seq1", "seq2", "seq3"]
+        assert isinstance(names, list)
+
+    def test_getnames_empty_set(self):
+        """Test retrieving names from an empty sequence set."""
+        seq_set = sq.Seq_set()
+
+        # Get names of all sequences in the empty set
+        names = seq_set.getnames()
+
+        # Check that the returned list of names is empty
+        assert names == []
+        assert isinstance(names, list)
+
+###################################################################################################
+
+class Test_Seq_set_range:
+
+    def test_range_valid(self):
+        """Test discarding symbols outside of a valid range in sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCGGCTA")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTACCGT")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Apply range that is valid for all sequences
+        seq_set.range(1, 4)
+
+        # Check that sequences have been truncated correctly
+        assert seq_set.getseq("seq1").seq == "TCG"
+        assert seq_set.getseq("seq2").seq == "GTA"
+
+    def test_range_invalid_range_order(self):
+        """Test that an invalid range (where rangefrom > rangeto) raises an error."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCGGCTA")
+        seq_set = sq.Seq_set(seqlist=[seq1])
+
+        # Apply an invalid range where rangefrom > rangeto
+        with pytest.raises(sq.SeqError, match="End-of-range index is higher than start-of-range index"):
+            seq_set.range(5, 2)
+
+    def test_range_exceeds_length(self):
+        """Test that a range exceeding the sequence length raises an error."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq_set = sq.Seq_set(seqlist=[seq1])
+
+        # Apply a range that exceeds the sequence length
+        with pytest.raises(sq.SeqError, match="Range exceeds length of sequence seq1: 4"):
+            seq_set.range(1, 10)
+
+    def test_range_exact_length(self):
+        """Test that applying a range equal to the sequence length keeps sequences unchanged."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2])
+
+        # Apply a range equal to the sequence length
+        seq_set.range(0, 4)
+
+        # Check that sequences are unchanged
+        assert seq_set.getseq("seq1").seq == "ATCG"
+        assert seq_set.getseq("seq2").seq == "GGTA"
+
+###################################################################################################
+
+class Test_Seq_set_removedupseqs:
+
+    def test_removedupseqs_with_duplicates(self):
+        """Test removing duplicate sequences from the set."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="ATCG")  # Duplicate of seq1
+        seq3 = sq.DNA_sequence(name="seq3", seq="GGTA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Remove duplicate sequences
+        duplist = seq_set.removedupseqs()
+
+        # Check that duplicates were removed correctly
+        assert len(seq_set) == 2
+        assert seq_set.getseq("seq1").seq == "ATCG"
+        assert seq_set.getseq("seq3").seq == "GGTA"
+        assert "seq2" not in seq_set.getnames()
+        assert duplist == [["seq1", "seq2"]]  # List of duplicates
+
+    def test_removedupseqs_no_duplicates(self):
+        """Test removing duplicates when there are no duplicates in the set."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Remove duplicate sequences
+        duplist = seq_set.removedupseqs()
+
+        # Check that no duplicates were found
+        assert len(seq_set) == 3
+        assert "seq1" in seq_set.getnames()
+        assert "seq2" in seq_set.getnames()
+        assert "seq3" in seq_set.getnames()
+        assert duplist == []  # No duplicates
+
+    def test_removedupseqs_multiple_duplicates(self):
+        """Test removing multiple sets of duplicate sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="ATCG")  # Duplicate of seq1
+        seq3 = sq.DNA_sequence(name="seq3", seq="GGTA")
+        seq4 = sq.DNA_sequence(name="seq4", seq="GGTA")  # Duplicate of seq3
+        seq5 = sq.DNA_sequence(name="seq5", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3, seq4, seq5])
+
+        # Remove duplicate sequences
+        duplist = seq_set.removedupseqs()
+
+        # Check that all duplicates were removed correctly
+        assert len(seq_set) == 3
+        assert "seq2" not in seq_set.getnames()
+        assert "seq4" not in seq_set.getnames()
+        assert duplist == [["seq1", "seq2"], ["seq3", "seq4"]]  # List of duplicates
+
+    def test_removedupseqs_all_identical(self):
+        """Test removing duplicates when all sequences are identical."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="ATCG")  # Duplicate of seq1
+        seq3 = sq.DNA_sequence(name="seq3", seq="ATCG")  # Duplicate of seq1
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Remove duplicate sequences
+        duplist = seq_set.removedupseqs()
+
+        # Check that only one sequence is kept
+        assert len(seq_set) == 1
+        assert "seq1" in seq_set.getnames()
+        assert "seq2" not in seq_set.getnames()
+        assert "seq3" not in seq_set.getnames()
+        assert duplist == [["seq1", "seq2", "seq3"]]  # All duplicates in one group
+
+###################################################################################################
+
+class Test_Seq_set_group_identical_seqs:
+
+    def test_group_identical_seqs_with_duplicates(self):
+        """Test grouping identical sequences in a set with duplicates."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="ATCG")  # Duplicate of seq1
+        seq3 = sq.DNA_sequence(name="seq3", seq="GGTA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Group identical sequences
+        grouplist = seq_set.group_identical_seqs()
+
+        # Check that groups are identified correctly
+        assert grouplist == [["seq1", "seq2"], ["seq3"]]
+
+    def test_group_identical_seqs_no_duplicates(self):
+        """Test grouping identical sequences when there are no duplicates."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Group identical sequences
+        grouplist = seq_set.group_identical_seqs()
+
+        # Check that each sequence is in its own group
+        assert grouplist == [["seq1"], ["seq2"], ["seq3"]]
+
+    def test_group_identical_seqs_multiple_duplicates(self):
+        """Test grouping multiple sets of identical sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="ATCG")  # Duplicate of seq1
+        seq3 = sq.DNA_sequence(name="seq3", seq="GGTA")
+        seq4 = sq.DNA_sequence(name="seq4", seq="GGTA")  # Duplicate of seq3
+        seq5 = sq.DNA_sequence(name="seq5", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3, seq4, seq5])
+
+        # Group identical sequences
+        grouplist = seq_set.group_identical_seqs()
+
+        # Check that all groups are identified correctly
+        assert grouplist == [["seq1", "seq2"], ["seq3", "seq4"], ["seq5"]]
+
+    def test_group_identical_seqs_all_identical(self):
+        """Test grouping when all sequences are identical."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="ATCG")  # Duplicate of seq1
+        seq3 = sq.DNA_sequence(name="seq3", seq="ATCG")  # Duplicate of seq1
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Group identical sequences
+        grouplist = seq_set.group_identical_seqs()
+
+        # Check that all sequences are in a single group
+        assert grouplist == [["seq1", "seq2", "seq3"]]
+
+    def test_group_identical_seqs_empty_set(self):
+        """Test grouping identical sequences in an empty set."""
+        seq_set = sq.Seq_set()
+
+        # Group identical sequences
+        grouplist = seq_set.group_identical_seqs()
+
+        # Check that the result is an empty list
+        assert grouplist == []
+
+###################################################################################################
+
+class Test_Seq_set_residuecounts:
+
+    def test_residuecounts_basic(self):
+        """Test residue counts for a basic set of sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Calculate residue counts
+        counts = seq_set.residuecounts()
+        concat_seq = seq1.seq + seq2.seq + seq3.seq
+        expected_counts = Counter(concat_seq)  
+        assert counts == expected_counts
+
+    def test_residuecounts_with_gaps(self):
+        """Test residue counts for sequences with gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="AT-CG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGT-A")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TT-AA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Calculate residue counts
+        counts = seq_set.residuecounts()
+        concat_seq = seq1.seq + seq2.seq + seq3.seq
+        expected_counts = Counter(concat_seq)
+        assert counts == expected_counts
+
+    def test_residuecounts_empty_set(self):
+        """Test residue counts for an empty set of sequences."""
+        seq_set = sq.Seq_set()
+
+        # Calculate residue counts
+        counts = seq_set.residuecounts()
+
+        # Check that the counts are an empty Counter
+        assert counts == Counter()
+
+    def test_residuecounts_single_sequence(self):
+        """Test residue counts for a single sequence."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCGATCG")
+        seq_set = sq.Seq_set(seqlist=[seq1])
+
+        # Calculate residue counts
+        counts = seq_set.residuecounts()
+
+        # Check that the counts are correct
+        expected_counts = Counter(seq1.seq)
+        assert counts == expected_counts
+
+###################################################################################################
+
+class Test_Seq_set_composition:
+
+    def test_composition_basic_ignore_gaps(self):
+        """Test composition (counts and frequencies) for a basic set of sequences, ignoring gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Calculate composition
+        composition = seq_set.composition(ignoregaps=True)
+
+        # Check that the composition is correct
+        total_residues = 12
+        expected_composition = {
+            "A": [4, 4 / total_residues],
+            "T": [4, 4 / total_residues],
+            "C": [1, 1 / total_residues],
+            "G": [3, 3 / total_residues],
+        }
+        assert composition == expected_composition
+
+    def test_composition_basic_include_gaps(self):
+        """Test composition (counts and frequencies) for a basic set of sequences, including gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="AT-CG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGT-A")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TT-AA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Calculate composition including gaps
+        composition = seq_set.composition(ignoregaps=False)
+
+        # Check that the composition is correct
+        total_residues = 15
+        expected_composition = {
+            "A": [4, 4 / total_residues],
+            "T": [4, 4 / total_residues],
+            "C": [1, 1 / total_residues],
+            "G": [3, 3 / total_residues],
+            "-": [3, 3 / total_residues],
+        }
+        assert composition == expected_composition
+
+    def test_composition_empty_set(self):
+        """Test composition for an empty set of sequences."""
+        seq_set = sq.Seq_set()
+
+        # Calculate composition
+        composition = seq_set.composition(ignoregaps=True)
+
+        # Check that the composition is an empty dictionary
+        assert composition == {}
+
+    def test_composition_single_sequence_ignore_gaps(self):
+        """Test composition for a single sequence, ignoring gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATC---GATCG")
+        seq_set = sq.Seq_set(seqlist=[seq1])
+
+        # Calculate composition ignoring gaps
+        composition = seq_set.composition(ignoregaps=True)
+
+        # Check that the composition is correct
+        total_residues = 8
+        expected_composition = {
+            "A": [2, 2 / total_residues],
+            "T": [2, 2 / total_residues],
+            "C": [2, 2 / total_residues],
+            "G": [2, 2 / total_residues],
+        }
+        assert composition == expected_composition
+
+    def test_composition_single_sequence_include_gaps(self):
+        """Test composition for a single sequence, including gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCGATC-G")
+        seq_set = sq.Seq_set(seqlist=[seq1])
+
+        # Calculate composition including gaps
+        composition = seq_set.composition(ignoregaps=False)
+
+        # Check that the composition is correct
+        total_residues = 9
+        expected_composition = {
+            "A": [2, 2 / total_residues],
+            "T": [2, 2 / total_residues],
+            "C": [2, 2 / total_residues],
+            "G": [2, 2 / total_residues],
+            "-": [1, 1 / total_residues],
+        }
+        assert composition == expected_composition
+
+###################################################################################################
+
+class Test_Seq_set_clean_names:
+
+    def test_clean_names_basic(self):
+        """Test cleaning names with basic illegal characters."""
+        seq1 = sq.DNA_sequence(name="seq1,abc", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2;def", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3(ghi)", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Clean names with default illegal characters
+        seq_set.clean_names()
+
+        # Check that names have been cleaned correctly
+        assert seq_set.getnames() == ["seq1_abc", "seq2_def", "seq3_ghi_"]
+
+    def test_clean_names_custom_illegal(self):
+        """Test cleaning names with custom illegal characters."""
+        seq1 = sq.DNA_sequence(name="seq1*abc", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2@def", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3%ghi", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Clean names with custom illegal characters
+        seq_set.clean_names(illegal="*@%")
+
+        # Check that names have been cleaned correctly
+        assert seq_set.getnames() == ["seq1_abc", "seq2_def", "seq3_ghi"]
+
+    def test_clean_names_no_illegal_characters(self):
+        """Test cleaning names when there are no illegal characters."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Clean names with default illegal characters
+        seq_set.clean_names()
+
+        # Check that names have not changed
+        assert seq_set.getnames() == ["seq1", "seq2", "seq3"]
+
+    def test_clean_names_empty_illegal_string(self):
+        """Test cleaning names when illegal string is empty."""
+        seq1 = sq.DNA_sequence(name="seq1*abc", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2@def", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3%ghi", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Clean names with empty illegal string
+        seq_set.clean_names(illegal="")
+
+        # Check that names have not changed
+        assert seq_set.getnames() == ["seq1*abc", "seq2@def", "seq3%ghi"]
+
+###################################################################################################
+
+class Test_Seq_set_rename_numbered:
+
+    def test_rename_numbered_basic(self):
+        """Test renaming sequences with a basic basename."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Rename sequences
+        seq_set.rename_numbered(basename="sample")
+
+        # Check that names have been renamed correctly
+        assert seq_set.getnames() == ["sample_1", "sample_2", "sample_3"]
+
+    def test_rename_numbered_with_namefile(self, tmp_path):
+        """Test renaming sequences and writing the changes to a file."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTAA")
+        seq_set = sq.Seq_set(seqlist=[seq1, seq2, seq3])
+
+        # Create a temporary file path
+        namefile = tmp_path / "name_changes.txt"
+
+        # Rename sequences and write to the file
+        seq_set.rename_numbered(basename="sample", namefile=str(namefile))
+
+        # Check that names have been renamed correctly
+        assert seq_set.getnames() == ["sample_1", "sample_2", "sample_3"]
+
+        # Verify contents of the namefile
+        with open(namefile, "r") as f:
+            lines = f.readlines()
+            assert lines == ["sample_1\tseq1\n", "sample_2\tseq2\n", "sample_3\tseq3\n"]
+
+    def test_rename_numbered_large_set(self):
+        """Test renaming a large set of sequences to ensure proper zero-padding."""
+        seq_set = sq.Seq_set(seqlist=[sq.DNA_sequence(name=f"seq{i}", seq="ATCG") for i in range(100)])
+
+        # Rename sequences
+        seq_set.rename_numbered(basename="sample")
+
+        # Check that names have been renamed correctly
+        expected_names = [f"sample_{str(i + 1).zfill(3)}" for i in range(100)]
+        assert seq_set.getnames() == expected_names
+
+    def test_rename_numbered_empty_set(self):
+        """Test renaming an empty set of sequences."""
+        seq_set = sq.Seq_set()
+
+        # Rename sequences
+        seq_set.rename_numbered(basename="sample")
+
+        # Check that there are no names to rename
+        assert seq_set.getnames() == []
+
+    def test_rename_numbered_large_set(self):
+        """Test renaming a large set of sequences to ensure proper zero-padding."""
+        seq_set = sq.Seq_set(seqlist=[sq.DNA_sequence(name=f"seq{i}", seq="ATCG") for i in range(100)])
+
+        # Rename sequences
+        seq_set.rename_numbered(basename="sample")
+
+        # Check that names have been renamed correctly with three-digit padding
+        expected_names = [f"sample_{str(i + 1).zfill(3)}" for i in range(100)]
+        assert seq_set.getnames() == expected_names
 
 ###################################################################################################
