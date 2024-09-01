@@ -1542,8 +1542,9 @@ class Sequences_base(object):
 
         # Uses getnames() (which returns copy of namelist) to avoid iterating over list and dict while changing them
         for oldname in self.getnames():
-            newname = transdict[oldname]
-            self.changeseqname(oldname, newname)
+            if oldname in transdict:
+                newname = transdict[oldname]
+                self.changeseqname(oldname, newname)
 
     #######################################################################################
 
