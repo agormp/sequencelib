@@ -1906,6 +1906,10 @@ class Seq_alignment(Sequences_base):
 
     def remcols(self, discardlist):
         """Discards all columns whose indices are in discardlist"""
+        maxindex = self.alignlen() - 1
+        for i in discardlist:
+            if i > maxindex or i < 0:
+                raise SeqError(f"Invalid column index in discardlist: {i}")
         keeplist = []
         for i in range(self.alignlen()):
             if i not in discardlist:
