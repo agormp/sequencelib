@@ -2229,6 +2229,8 @@ class Seq_alignment(Sequences_base):
             nG = counts["G"]
             nT = counts["T"]
             nseq = nA + nC + nG + nT
+            if nseq == 0:
+                nseq = 1 # Hack to avoid zero division, and to get zeroes in matrix. Fix
             freqmat[i, 0] = nA / nseq
             freqmat[i, 1] = nC / nseq
             freqmat[i, 2] = nG / nseq
