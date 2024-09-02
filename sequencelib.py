@@ -2099,9 +2099,12 @@ class Seq_alignment(Sequences_base):
 
     def gap_encode(self):
         """Return Seq_alignment object with binary (Restriction-type) seqs
-        encoding all gaps in alignment"""
+        encoding all gaps in alignment. Each unique, possibly multi-residue, gap is 
+        encoded as 1 if present and 0 if not. Order of columns based on sorted list of
+        start, stop positions (so (2, 5) is before (2, 6) for instance)"""
 
         # Python note: need more methods in addition to simple (missing for nested gaps eg). Add as options or extra methods?
+        # Python note: no gaps in alignment returns empty gap encoding - should that be column of 0 instead?
 
         gaplist = self.findgaps()
         gap_alignment = Seq_alignment(name="gap_encoding")
