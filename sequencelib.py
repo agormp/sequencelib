@@ -2185,6 +2185,8 @@ class Seq_alignment(Sequences_base):
         """Computes Shannon entropy for all columns in the alignment, returns list of values (index=position in seq)"""
 
         # NOTE: if countgaps==True, then gaps are treated as an extra symbol. Otherwise they are ignored
+        if len(self) == 0:
+            raise SeqError("No sequences in alignment - can not compute Shannon entropy")
         shannonlist = []
         numseqs = len(self)
         for col in self.columns():
