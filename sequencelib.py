@@ -2013,14 +2013,15 @@ class Seq_alignment(Sequences_base):
         """Returns list giving, for each column, the fraction of sequences having endgaps.
         Endgaps: contiguous gappy region starting at either end of alignment"""
 
-        endgapfrac = [0.0] * self.alignlen()
+        alignlen = self.alignlen()
+        endgapfrac = [0.0] * alignlen
         for seq in self:
             i = 0
-            while seq[i] == "-":
+            while i < alignlen and seq[i] == "-":
                 endgapfrac[i] += 1
                 i += 1
             i = -1
-            while seq[i] == "-":
+            while i > 0 and seq[i] == "-":
                 endgapfrac[i] += 1
                 i -= 1
         nseq = len(self)
