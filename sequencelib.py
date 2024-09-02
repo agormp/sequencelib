@@ -2054,7 +2054,7 @@ class Seq_alignment(Sequences_base):
         """For alignments created by HMMer:hmmalign: Removes insert state columns"""
 
         # In alignments from HMMer's hmmalign: insert states have lower case residues
-        # and/or "." for gaps (not really gaps - just lack of insert in other seq).
+        # or "." for gaps (not really gaps - just lack of insert in other seq).
         # Internally I keep track of these using Seq_alignment.annotation field:
         # "i" = insert state, "m" = match state
         discardlist = []
