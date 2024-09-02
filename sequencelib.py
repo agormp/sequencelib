@@ -1993,22 +1993,6 @@ class Seq_alignment(Sequences_base):
 
     #######################################################################################
 
-    def samplecols(self, samplesize):
-        """Randomly selects samplesize columns from alignment, discarding rest"""
-
-        # Sanity check: is samplesize larger than length of alignment? Is it less than zero?
-        if samplesize > self.alignlen():
-            raise SeqError("Requested samplesize larger than length of alignment")
-        if samplesize < 0:
-            raise SeqError("Requested samplesize is negative - must be positive integer")
-        else:
-            allpos = list(range(self.alignlen()))
-            keeplist = random.sample(allpos, samplesize)
-
-        self.indexfilter(keeplist)
-
-    #######################################################################################
-
     def endgapfraclist(self):
         """Returns list giving, for each column, the fraction of sequences having endgaps.
         Endgaps: contiguous gappy region starting at either end of alignment"""
@@ -2089,6 +2073,22 @@ class Seq_alignment(Sequences_base):
         gaplist = list(gapset)
         gaplist.sort()
         return gaplist
+
+    #######################################################################################
+
+    def samplecols(self, samplesize):
+        """Randomly selects samplesize columns from alignment, discarding rest"""
+
+        # Sanity check: is samplesize larger than length of alignment? Is it less than zero?
+        if samplesize > self.alignlen():
+            raise SeqError("Requested samplesize larger than length of alignment")
+        if samplesize < 0:
+            raise SeqError("Requested samplesize is negative - must be positive integer")
+        else:
+            allpos = list(range(self.alignlen()))
+            keeplist = random.sample(allpos, samplesize)
+
+        self.indexfilter(keeplist)
 
     #######################################################################################
 
