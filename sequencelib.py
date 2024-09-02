@@ -2196,7 +2196,7 @@ class Seq_alignment(Sequences_base):
                 del symbolcounts["-"]       # NOTE: what if column is all gaps???
             entropy = 0.0
             for symbol in symbolcounts:
-                symbolfreq = float(symbolcounts[symbol]) / numseqs
+                symbolfreq = symbolcounts[symbol] / numseqs
                 entropy += symbolfreq * log(symbolfreq, 2)
             shannonlist.append(- entropy)
 
