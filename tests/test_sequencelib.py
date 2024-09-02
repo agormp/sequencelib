@@ -3426,4 +3426,484 @@ class Test_Seq_alignment_columns:
         # Check that the single column is returned correctly
         assert all_columns == [['A', 'G']]
 
+###################################################################################################
 
+class Test_Seq_alignment_conscols:
+    """Test suite for the conscols method in Seq_alignment."""
+
+    def test_conscols_all_conserved(self):
+        """Test conscols with all columns conserved."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="AAAA")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AAAA")
+        alignment = sq.Seq_alignment(name="alignment", seqlist=[seq1, seq2])
+
+        conserved_columns = alignment.conscols()
+        assert conserved_columns == [0, 1, 2, 3]
+
+    def test_conscols_no_conserved(self):
+        """Test conscols with no conserved columns."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="AATG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="CCGA")
+        alignment = sq.Seq_alignment(name="alignment", seqlist=[seq1, seq2])
+
+        conserved_columns = alignment.conscols()
+        assert conserved_columns == []
+
+    def test_conscols_some_conserved(self):
+        """Test conscols with some conserved columns."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ACATT")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AGAGG")
+        alignment = sq.Seq_alignment(name="alignment", seqlist=[seq1, seq2])
+
+        conserved_columns = alignment.conscols()
+        assert conserved_columns == [0, 2]
+        
+###################################################################################################
+
+class Test_Seq_alignment_varcols:
+    """Test suite for the varcols method in Seq_alignment."""
+
+    def test_varcols_all_variable(self):
+        """Test varcols with all columns variable."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="AGTC")
+        seq2 = sq.DNA_sequence(name="seq2", seq="CTGA")
+        alignment = sq.Seq_alignment(name="alignment", seqtype="DNA", seqlist=[seq1, seq2])
+
+        variable_columns = alignment.varcols()
+        assert variable_columns == [0, 1, 2, 3]
+
+    def test_varcols_no_variable(self):
+        """Test varcols with no variable columns."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="AAAA")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AAAA")
+        alignment = sq.Seq_alignment(name="alignment", seqtype="DNA", seqlist=[seq1, seq2])
+
+        variable_columns = alignment.varcols()
+        assert variable_columns == []
+
+    def test_varcols_some_variable(self):
+        """Test varcols with some variable columns."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="AATTA-")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AGTGAA")
+        alignment = sq.Seq_alignment(name="alignment", seqtype="DNA", seqlist=[seq1, seq2])
+
+        variable_columns = alignment.varcols()
+        assert variable_columns == [1, 3, 5]
+        
+###################################################################################################
+
+class Test_Seq_alignment_gappycols:
+    """Test suite for the gappycols method in Seq_alignment."""
+
+    def test_gappycols_some_gaps(self):
+        """Test gappycols with some columns containing gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="A-TG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AG-A")
+        alignment = sq.Seq_alignment(name="alignment", seqtype="DNA", seqlist=[seq1, seq2])
+
+        gappy_columns = alignment.gappycols()
+        assert gappy_columns == [1, 2]
+
+    def test_gappycols_all_gappy(self):
+        """Test gappycols with all columns containing gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="-AC-")
+        seq2 = sq.DNA_sequence(name="seq2", seq="A--G")
+        alignment = sq.Seq_alignment(name="alignment", seqtype="DNA", seqlist=[seq1, seq2])
+
+        gappy_columns = alignment.gappycols()
+        assert gappy_columns == [0, 1, 2, 3]
+
+    def test_gappycols_no_gaps(self):
+        """Test gappycols with no gappy columns."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GCTA")
+        alignment = sq.Seq_alignment(name="alignment", seqtype="DNA", seqlist=[seq1, seq2])
+
+        gappy_columns = alignment.gappycols()
+        assert gappy_columns == []
+
+
+###################################################################################################
+
+class Test_Seq_alignment_site_summary:
+    """Test suite for the site_summary method in Seq_alignment."""
+
+    def test_site_summary_all_conserved(self):
+        """Test site_summary with all conserved columns."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="AAAA")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AAAA")
+        alignment = sq.Seq_alignment(name="alignment", seqtype="DNA", seqlist=[seq1, seq2])
+
+        summary = alignment.site_summary()
+        assert summary == (4, 0, 0)
+
+    def test_site_summary_all_variable(self):
+        """Test site_summary with all variable columns."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GCTA")
+        alignment = sq.Seq_alignment(name="alignment", seqtype="DNA", seqlist=[seq1, seq2])
+
+        summary = alignment.site_summary()
+        assert summary == (4, 4, 0)
+
+    def test_site_summary_conserved_gappy(self):
+        """Test site_summary with some columns gappy and conserved."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="A--T")
+        seq2 = sq.DNA_sequence(name="seq2", seq="G--A")
+        alignment = sq.Seq_alignment(name="alignment", seqtype="DNA", seqlist=[seq1, seq2])
+
+        summary = alignment.site_summary()
+        assert summary == (4, 2, 2)
+
+    def test_site_summary_mixed(self):
+        """Test site_summary with a mix of conserved, variable, and gappy columns."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="A--C")
+        seq2 = sq.DNA_sequence(name="seq2", seq="A-GA")
+        alignment = sq.Seq_alignment(name="alignment", seqtype="DNA", seqlist=[seq1, seq2])
+
+        summary = alignment.site_summary()
+        assert summary == (4, 2, 2)
+        
+###################################################################################################
+
+class Test_Seq_alignment_indexfilter:
+    """Test suite for the indexfilter method in Seq_alignment."""
+
+    def test_indexfilter_basic(self):
+        """Test indexfilter with a basic keeplist."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AGTG")
+        alignment = sq.Seq_alignment(name="alignment", seqlist=[seq1, seq2])
+
+        # Apply indexfilter to keep only columns at indices 0 and 2
+        alignment.indexfilter([0, 2])
+
+        # Check that sequences have been filtered correctly
+        assert alignment.getseq("seq1").seq == "AC"
+        assert alignment.getseq("seq2").seq == "AT"
+
+    def test_indexfilter_with_annotation(self):
+        """Test indexfilter with annotation present."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AGTG")
+        alignment = sq.Seq_alignment(name="alignment", seqlist=[seq1, seq2])
+        alignment.annotation = "0123"
+
+        # Apply indexfilter to keep only columns at indices 1 and 3
+        alignment.indexfilter([1, 3])
+
+        # Check that sequences have been filtered correctly
+        assert alignment.getseq("seq1").seq == "TG"
+        assert alignment.getseq("seq2").seq == "GG"
+        assert alignment.annotation == "13"
+
+    def test_indexfilter_with_partitions(self):
+        """Test indexfilter with partition adjustments."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AGTG")
+        alignment = sq.Seq_alignment(name="region1", seqlist=[seq1, seq2])
+
+        # Apply indexfilter to keep only columns at indices 1 and 3
+        alignment.indexfilter([1, 3])
+
+        # Check that sequences and partitions have been adjusted correctly
+        assert alignment.getseq("seq1").seq == "TG"
+        assert alignment.getseq("seq2").seq == "GG"
+        assert alignment.partitions == [("region1", 0, 2, "DNA")]
+
+    def test_indexfilter_remove_all_columns(self):
+        """Test indexfilter when all columns are removed."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AGTG")
+        alignment = sq.Seq_alignment(name="alignment", seqtype="DNA", seqlist=[seq1, seq2])
+
+        # Apply indexfilter with an empty keeplist
+        alignment.indexfilter([])
+
+        # Check that all sequences are empty
+        assert alignment.getseq("seq1").seq == ""
+        assert alignment.getseq("seq2").seq == ""
+
+    def test_indexfilter_invalid_indices(self):
+        """Test indexfilter with invalid indices in keeplist."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AGTG")
+        alignment = sq.Seq_alignment(name="alignment", seqtype="DNA", seqlist=[seq1, seq2])
+
+        # Apply indexfilter with indices out of range
+        with pytest.raises(IndexError):
+            alignment.indexfilter([0, 5])  # Index 5 is out of range
+            
+###################################################################################################
+
+class Test_Seq_alignment_remcols:
+    """Test suite for the remcols method in Seq_alignment."""
+
+    def test_remcols_basic(self):
+        """Test remcols with a basic discardlist."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AGTG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Apply remcols to remove columns at indices 1 and 3
+        alignment.remcols([1, 3])
+
+        # Check that sequences have been filtered correctly
+        assert alignment.getseq("seq1").seq == "AC"
+        assert alignment.getseq("seq2").seq == "AT"
+
+    def test_remcols_no_columns_removed(self):
+        """Test remcols when no columns are removed."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AGTG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Apply remcols with an empty discardlist
+        alignment.remcols([])
+
+        # Check that sequences remain unchanged
+        assert alignment.getseq("seq1").seq == "ATCG"
+        assert alignment.getseq("seq2").seq == "AGTG"
+
+    def test_remcols_all_columns_removed(self):
+        """Test remcols when all columns are removed."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AGTG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Apply remcols to remove all columns
+        alignment.remcols([0, 1, 2, 3])
+
+        # Check that all sequences are empty
+        assert alignment.getseq("seq1").seq == ""
+        assert alignment.getseq("seq2").seq == ""
+
+    def test_remcols_invalid_indices(self):
+        """Test remcols with invalid indices in discardlist."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AGTG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Apply remcols with indices out of range or negative, should raise SeqError
+        with pytest.raises(sq.SeqError, match=r"Invalid column index in discardlist: 4"):
+            alignment.remcols([0, 4])  # Index 4 is out of range
+
+        with pytest.raises(sq.SeqError, match=r"Invalid column index in discardlist: -1"):
+            alignment.remcols([-1])  # Index -1 is negative
+
+    def test_remcols_with_partitions(self):
+        """Test remcols with partition adjustments."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AGTG")
+        alignment = sq.Seq_alignment(name="region1")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Apply remcols to remove columns at indices 1 and 3
+        alignment.remcols([1, 3])
+
+        # Check that sequences and partitions have been adjusted correctly
+        assert alignment.getseq("seq1").seq == "AC"
+        assert alignment.getseq("seq2").seq == "AT"
+        assert alignment.partitions == [("region1", 0, 2, "DNA")]
+        
+###################################################################################################
+
+class Test_Seq_alignment_remambigcol:
+    """Test suite for the remambigcol method in Seq_alignment."""
+
+    def test_remambigcol_no_ambiguities(self):
+        """Test remambigcol when there are no ambiguity symbols."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AGTG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        alignment.remambigcol()
+
+        # No columns should be removed
+        assert alignment.getseq("seq1").seq == "ATCG"
+        assert alignment.getseq("seq2").seq == "AGTG"
+
+    def test_remambigcol_with_ambiguities(self):
+        """Test remambigcol when there are ambiguity symbols."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCGN")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AYTGT")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        alignment.remambigcol()
+
+        # Columns with ambiguities ('N' and 'X') should be removed
+        assert alignment.getseq("seq1").seq == "ACG"
+        assert alignment.getseq("seq2").seq == "ATG"
+
+    def test_remambigcol_all_ambiguities(self):
+        """Test remambigcol when all columns are ambiguous."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="NNNN")
+        seq2 = sq.DNA_sequence(name="seq2", seq="RRRR")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        alignment.remambigcol()
+
+        # All columns should be removed, resulting in empty sequences
+        assert alignment.getseq("seq1").seq == ""
+        assert alignment.getseq("seq2").seq == ""
+
+###################################################################################################
+
+class Test_Seq_alignment_remfracambigcol:
+    """Test suite for the remfracambigcol method in Seq_alignment."""
+
+    def test_remfracambigcol_partial_ambiguity(self):
+        """Test remfracambigcol with a fraction threshold."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCGN")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AGTGN")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        alignment.remfracambigcol(frac=0.5)
+
+        # Only column with ambiguities 'N' and 'N' where ambiguity fraction >= 0.5 should be removed
+        assert alignment.getseq("seq1").seq == "ATCG"
+        assert alignment.getseq("seq2").seq == "AGTG"
+
+    def test_remfracambigcol_all_ambiguities(self):
+        """Test remfracambigcol when all columns exceed the fraction threshold."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ANNN")
+        seq2 = sq.DNA_sequence(name="seq2", seq="NCGN")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        alignment.remfracambigcol(frac=0.5)
+
+        # All columns should be removed due to high ambiguity fraction
+        assert alignment.getseq("seq1").seq == ""
+        assert alignment.getseq("seq2").seq == ""
+
+###################################################################################################
+
+class Test_Seq_alignment_remgapcol:
+    """Test suite for the remgapcol method in Seq_alignment."""
+
+    def test_remgapcol_no_gaps(self):
+        """Test remgapcol when there are no gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AGTG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        alignment.remgapcol()
+
+        # No columns should be removed
+        assert alignment.getseq("seq1").seq == "ATCG"
+        assert alignment.getseq("seq2").seq == "AGTG"
+
+    def test_remgapcol_with_gaps(self):
+        """Test remgapcol when there are gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATC-G")
+        seq2 = sq.DNA_sequence(name="seq2", seq="A-T-G")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        alignment.remgapcol()
+
+        # Columns with gaps should be removed
+        assert alignment.getseq("seq1").seq == "ACG"
+        assert alignment.getseq("seq2").seq == "ATG"
+        
+###################################################################################################
+
+class Test_Seq_alignment_remfracgapcol:
+    """Test suite for the remfracgapcol method in Seq_alignment."""
+
+    def test_remfracgapcol_partial_gaps(self):
+        """Test remfracgapcol with a fraction threshold."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG-")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AGT-G")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        alignment.remfracgapcol(frac=0.5)
+
+        # Columns where gap fraction >= 0.5 should be removed
+        assert alignment.getseq("seq1").seq == "ATC"
+        assert alignment.getseq("seq2").seq == "AGT"
+
+    def test_remfracgapcol_all_gaps(self):
+        """Test remfracgapcol when all columns exceed the fraction threshold."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="A---")
+        seq2 = sq.DNA_sequence(name="seq2", seq="----")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        alignment.remfracgapcol(frac=0.5)
+
+        # All columns should be removed due to high gap fraction
+        assert alignment.getseq("seq1").seq == ""
+        assert alignment.getseq("seq2").seq == ""
+
+###################################################################################################
+
+class Test_Seq_alignment_remendgapcol:
+    """Test suite for the remendgapcol method in Seq_alignment."""
+
+    def test_remendgapcol_no_end_gaps(self):
+        """Test remendgapcol when there are no end gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AGTG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        alignment.remendgapcol(frac=0.5)
+
+        # No columns should be removed
+        assert alignment.getseq("seq1").seq == "ATCG"
+        assert alignment.getseq("seq2").seq == "AGTG"
+
+    def test_remendgapcol_with_end_gaps(self):
+        """Test remendgapcol when there are end gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="--CG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AGTG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        alignment.remendgapcol(frac=0.5)
+
+        # End columns with gaps should be removed
+        assert alignment.getseq("seq1").seq == "CG"
+        assert alignment.getseq("seq2").seq == "TG"
+
+    def test_remendgapcol_all_end_gaps(self):
+        """Test remendgapcol when all columns are end gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="----")
+        seq2 = sq.DNA_sequence(name="seq2", seq="ACGT")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        alignment.remendgapcol(frac=0.5)
+
+        # All columns should be removed due to end gaps
+        assert alignment.getseq("seq1").seq == ""
+        assert alignment.getseq("seq2").seq == ""
