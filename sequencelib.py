@@ -2272,20 +2272,6 @@ class Seq_alignment(Sequences_base):
 
         return seqset
 
-    # #######################################################################################
-    #
-    # def subseq(self, start, stop, slicesyntax=True, rename=False):
-    #     """Returns specified columns from alignment as new Seq_alignment object"""
-    #
-    #     # If slicesyntax is False: indexing starts at 1, and stop is included
-    #     # If rename is True: start and stop indices added to name
-    #     subseqs = Seq_alignment(self.name)
-    #     for seq in self:
-    #         newseq = seq.subseq(start, stop, slicesyntax, rename)
-    #         subseqs.addseq(newseq)
-    #
-    #     return subseqs
-    #
     #######################################################################################
 
     def partitions_as_seqalignments(self):
