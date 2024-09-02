@@ -2241,9 +2241,11 @@ class Seq_alignment(Sequences_base):
     #######################################################################################
 
     def consensus(self):
-        """Returns consensus sequence (= most frequent symbol in each alignment column) as sequence object"""
+        """Returns consensus sequence (= most frequent symbol in each alignment column) as sequence object.
+        Ties are broken randomly"""
 
         # NOTE: all symbols are counted (also gaps and IUPAC). Should this be changed?
+        # NOTE 2: ties are broken randomly by Counter.most_common. Change?
         seqlist = []
         for i in range(self.alignlen()):
             col = self.getcolumn(i)
@@ -2256,6 +2258,7 @@ class Seq_alignment(Sequences_base):
         con_seq = seq_class(name=self.name, seq=seq_string)
 
         return con_seq
+
 
     #######################################################################################
 
