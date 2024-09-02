@@ -3907,3 +3907,63 @@ class Test_Seq_alignment_remendgapcol:
         # All columns should be removed due to end gaps
         assert alignment.getseq("seq1").seq == ""
         assert alignment.getseq("seq2").seq == ""
+        
+###################################################################################################
+
+class Test_Seq_alignment_endgapfraclist:
+    """Test suite for the endgapfraclist method in Seq_alignment."""
+
+    def test_endgapfraclist_no_gaps(self):
+        """Test when there are no gaps in any sequence."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GCTA")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        endgapfrac = alignment.endgapfraclist()
+
+        # No columns have end gaps
+        assert endgapfrac == [0.0, 0.0, 0.0, 0.0]
+
+    def test_endgapfraclist_some_gaps(self):
+        """Test when some sequences have gaps at the ends."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="-TCGGC")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GCTAG-")
+        seq3 = sq.DNA_sequence(name="seq3", seq="---A-T")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+        alignment.addseq(seq3)
+
+        endgapfrac = alignment.endgapfraclist()
+
+        # Mixed gaps at different ends of the sequences
+        assert endgapfrac == [2/3, 1/3, 1/3, 0.0, 0.0, 1/3]
+
+    def test_endgapfraclist_all_gaps(self):
+        """Test when all sequences are entirely gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="----")
+        seq2 = sq.DNA_sequence(name="seq2", seq="----")
+        seq3 = sq.DNA_sequence(name="seq3", seq="----")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+        alignment.addseq(seq3)
+
+        endgapfrac = alignment.endgapfraclist()
+
+        # All positions have 100% gaps
+        assert endgapfrac == [1.0, 1.0, 1.0, 1.0]
+
+    def test_endgapfraclist_empty_alignment(self):
+        """Test behavior when alignment has no sequences."""
+        alignment = sq.Seq_alignment(name="empty_alignment")
+
+        endgapfrac = alignment.endgapfraclist()
+
+        # End gap fraction list should be empty
+        assert endgapfrac == []
+        
+###################################################################################################
+
