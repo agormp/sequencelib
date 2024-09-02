@@ -3252,3 +3252,178 @@ class Test_Seq_alignment_appendalignment:
         assert appended_alignment.partitions == [("alignment1", 0, 4, "DNA"), ("alignment2", 4, 4, "DNA")]
         assert appended_alignment.getseq("seq1").seq == "ATCGGCTA"
 
+###################################################################################################
+
+class Test_Seq_alignment_alignlen:
+    """Test suite for the alignlen method in Seq_alignment."""
+
+    def test_alignlen_non_empty(self):
+        """Test the alignment length for a non-empty Seq_alignment object."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        alignment = sq.Seq_alignment(name="alignment", seqtype="DNA", seqlist=[seq1, seq2])
+        
+        # Check the length of the alignment
+        assert alignment.alignlen() == 4
+
+    def test_alignlen_empty(self):
+        """Test the alignment length for an empty Seq_alignment object."""
+        alignment = sq.Seq_alignment(name="empty_alignment", seqtype="DNA")
+        
+        # Check the length of the alignment, should be 0 for an empty alignment
+        assert alignment.alignlen() == 0
+
+    def test_alignlen_after_adding_sequence(self):
+        """Test the alignment length after adding a sequence."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        alignment = sq.Seq_alignment(name="alignment", seqtype="DNA")
+        
+        # Initially empty, so length should be 0
+        assert alignment.alignlen() == 0
+        
+        # Add a sequence and check the length
+        alignment.addseq(seq1)
+        assert alignment.alignlen() == 4
+
+    def test_alignlen_different_lengths(self):
+        """Test the alignment length consistency across multiple sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="CCTT")
+        alignment = sq.Seq_alignment(name="alignment", seqtype="DNA", seqlist=[seq1, seq2, seq3])
+        
+        # Check the length of the alignment, should match length of sequences
+        assert alignment.alignlen() == 4
+
+    def test_alignlen_mixed_sequence_types(self):
+        """Test the alignment length for different sequence types in different partitions."""
+        # First partition: DNA sequences
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTA")
+        alignment1 = sq.Seq_alignment(name="alignment1", seqtype="DNA", seqlist=[seq1, seq2])
+        
+        # Second partition: Protein sequences
+        seq3 = sq.Protein_sequence(name="seq1", seq="MKFL")
+        seq4 = sq.Protein_sequence(name="seq2", seq="HISF")
+        alignment2 = sq.Seq_alignment(name="alignment2", seqtype="protein", seqlist=[seq3, seq4])
+        
+        # Append alignment2 to alignment1
+        combined_alignment = alignment1.appendalignment(alignment2)
+        
+        # Check the total length of the combined alignment
+        assert combined_alignment.alignlen() == 8  # 4 from DNA, 4 from protein
+
+        # Check partition lengths are updated correctly
+        assert combined_alignment.partitions == [
+            ("alignment1", 0, 4, "DNA"),
+            ("alignment2", 4, 4, "protein")
+        ]
+
+    def test_alignlen_with_annotation(self):
+        """Test the alignment length when annotation is added."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        alignment = sq.Seq_alignment(name="alignment_with_annotation", seqtype="DNA", seqlist=[seq1])
+        alignment.annotation = "some_annotation"
+        
+        # Annotation should not affect the length of the alignment
+        assert alignment.alignlen() == 4
+        
+###################################################################################################
+
+class Test_Seq_alignment_getcolumn:
+    """Test suite for the getcolumn method in Seq_alignment."""
+
+    def test_getcolumn_first(self):
+        """Test retrieving the first column."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTG")
+        alignment = sq.Seq_alignment(name="alignment", seqtype="DNA", seqlist=[seq1, seq2])
+        
+        # Get the first column (index 0)
+        column = alignment.getcolumn(0)
+        assert column == ['A', 'G']
+
+    def test_getcolumn_middle(self):
+        """Test retrieving a middle column."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTG")
+        alignment = sq.Seq_alignment(name="alignment", seqtype="DNA", seqlist=[seq1, seq2])
+        
+        # Get the middle column (index 2)
+        column = alignment.getcolumn(2)
+        assert column == ['C', 'T']
+
+    def test_getcolumn_last(self):
+        """Test retrieving the last column."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTG")
+        alignment = sq.Seq_alignment(name="alignment", seqtype="DNA", seqlist=[seq1, seq2])
+        
+        # Get the last column (index 3)
+        column = alignment.getcolumn(3)
+        assert column == ['G', 'G']
+
+    def test_getcolumn_out_of_bounds(self):
+        """Test retrieving a column out of bounds (should raise an error)."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTG")
+        alignment = sq.Seq_alignment(name="alignment", seqtype="DNA", seqlist=[seq1, seq2])
+        
+        # Attempt to get a column index that is out of bounds
+        with pytest.raises(IndexError):
+            alignment.getcolumn(4)
+
+    def test_getcolumn_single_sequence(self):
+        """Test retrieving a column from an alignment with a single sequence."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        alignment = sq.Seq_alignment(name="alignment", seqtype="DNA", seqlist=[seq1])
+        
+        # Get the second column (index 1)
+        column = alignment.getcolumn(1)
+        assert column == ['T']
+        
+###################################################################################################
+
+class Test_Seq_alignment_columns:
+    """Test suite for the columns method in Seq_alignment."""
+
+    def test_columns_iteration(self):
+        """Test iterating over all columns in an alignment."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTG")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTTT")
+        alignment = sq.Seq_alignment(name="multi_seq_alignment", seqtype="DNA", seqlist=[seq1, seq2, seq3])
+        
+        # Create an iterator for the columns
+        column_iterator = alignment.columns()
+        all_columns = list(column_iterator)
+        
+        # Check that all columns are returned correctly
+        expected_columns = [['A', 'G', 'T'], ['T', 'G', 'T'], ['C', 'T', 'T'], ['G', 'G', 'T']]
+        assert all_columns == expected_columns
+
+    def test_columns_empty_alignment(self):
+        """Test iterating over columns in an empty alignment (should yield nothing)."""
+        alignment = sq.Seq_alignment(name="empty_alignment", seqtype="DNA")
+        
+        # Create an iterator for the columns
+        column_iterator = alignment.columns()
+        all_columns = list(column_iterator)
+        
+        # Check that no columns are yielded
+        assert all_columns == []
+
+    def test_columns_single_column(self):
+        """Test iterating over an alignment with a single column."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="A")
+        seq2 = sq.DNA_sequence(name="seq2", seq="G")
+        alignment = sq.Seq_alignment(name="single_column_alignment", seqtype="DNA", seqlist=[seq1, seq2])
+        
+        # Create an iterator for the columns
+        column_iterator = alignment.columns()
+        all_columns = list(column_iterator)
+        
+        # Check that the single column is returned correctly
+        assert all_columns == [['A', 'G']]
+
+
