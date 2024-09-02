@@ -1806,7 +1806,7 @@ class Seq_alignment(Sequences_base):
 
             def __init__(self, parent):
                 self.i=0
-                self.length = len(parent[0])
+                self.length = parent.alignlen()
                 self.parent = parent
 
             def __iter__(self):
