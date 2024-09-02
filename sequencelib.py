@@ -2019,6 +2019,30 @@ class Seq_alignment(Sequences_base):
 
     #######################################################################################
 
+    def remendgapseqs(self, cutoff=None):
+        """Remove sequences with endgaps >= cutoff"""
+
+        # Python note: individual seq should have responsibility for finding its endgaps
+
+        if cutoff is None:
+            msg = "Must provide cutoff (maximum accepted endgap length) for remendgapseqs()"
+            raise SeqError(msg)
+        remlist = []
+        for seq in self:
+            maxlen = 0
+            for i,step in [(0,1),(-1,-1)]:
+                endgaplen = 0
+                while seq[i] == "-":
+                    endgaplen += 1
+                    i += step
+                if endgaplen > maxlen:
+                    maxlen = endgaplen
+            if maxlen >= cutoff:
+                remlist.append(seq.name)
+        self.remseqs(remlist)
+
+    #######################################################################################
+
     def remconscol(self):
         """Removes columns where all symbols are identical (conserved columns)"""
         conscols = self.conscols()
@@ -2042,30 +2066,6 @@ class Seq_alignment(Sequences_base):
             raise SeqError("This alignment contains no information about hmmalign insert states")
 
         self.remcols(discardlist)
-
-    #######################################################################################
-
-    def remendgapseqs(self, cutoff=None):
-        """Remove sequences with endgaps >= cutoff"""
-
-        # Python note: individual seq should have responsibility for finding its endgaps
-
-        if cutoff is None:
-            msg = "Must provide cutoff (maximum accepted endgap length) for remendgapseqs()"
-            raise SeqError(msg)
-        remlist = []
-        for seq in self:
-            maxlen = 0
-            for i,step in [(0,1),(-1,-1)]:
-                endgaplen = 0
-                while seq[i] == "-":
-                    endgaplen += 1
-                    i += step
-                if endgaplen > maxlen:
-                    maxlen = endgaplen
-            if maxlen >= cutoff:
-                remlist.append(seq.name)
-        self.remseqs(remlist)
 
     #######################################################################################
 
