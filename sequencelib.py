@@ -2000,14 +2000,19 @@ class Seq_alignment(Sequences_base):
         alignlen = self.alignlen()
         endgapfrac = [0.0] * alignlen
         for seq in self:
-            i = 0
-            while i < alignlen and seq[i] == "-":
-                endgapfrac[i] += 1
-                i += 1
-            i = -1
-            while i > 0 and seq[i] == "-":
-                endgapfrac[i] += 1
-                i -= 1
+            # pathological case: seq is all-gaps: add 1 to all positions and move on
+            if set(seq.seq) == {"-"}:
+                endgapfrac = [x+1 for x in endgapfrac]
+            # Else: count endgaps starting at both ends
+            else:
+                i = 0
+                while i < alignlen and seq[i] == "-":
+                    endgapfrac[i] += 1
+                    i += 1
+                i = -1
+                while i >= -alignlen and seq[i] == "-":
+                    endgapfrac[i] += 1
+                    i -= 1
         nseq = len(self)
         endgapfrac = [ count/nseq for count in endgapfrac]
         return endgapfrac
