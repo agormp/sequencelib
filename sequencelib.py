@@ -1863,7 +1863,9 @@ class Seq_alignment(Sequences_base):
     #######################################################################################
 
     def indexfilter(self, keeplist):
-        """Discards all columns whose indices are not in keeplist"""
+        """Discards all columns whose indices are not in keeplist.
+        Note: works in-place, nothing is returned"""
+        
         for seq in self:
             seq.indexfilter(keeplist)
 
