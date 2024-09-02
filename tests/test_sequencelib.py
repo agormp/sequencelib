@@ -5,6 +5,7 @@ import re
 import numpy as np
 import collections
 from collections import Counter
+from math import log
 
 
 # Note: I could use fixtures to make the testing code much shorter (sharing a few instances
@@ -3428,6 +3429,99 @@ class Test_Seq_alignment_columns:
 
 ###################################################################################################
 
+class Test_Seq_alignment_samplecols:
+    """Test suite for the samplecols method in Seq_alignment."""
+
+    def test_samplecols_valid(self):
+        """Test sampling a valid number of columns."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCGGCTA")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTACCGT")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Sample 4 columns
+        alignment.samplecols(4)
+
+        # Check that the alignment now has 4 columns
+        assert alignment.alignlen() == 4
+
+    def test_samplecols_full_length(self):
+        """Test sampling the full length of the alignment (should keep all columns)."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCGGCTA")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTACCGT")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Sample all columns
+        alignment.samplecols(8)
+
+        # Check that the alignment still has all 8 columns
+        assert alignment.alignlen() == 8
+
+    def test_samplecols_zero_columns(self):
+        """Test sampling zero columns (should result in an empty alignment)."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Sample 0 columns
+        alignment.samplecols(0)
+
+        # Check that the alignment is now empty
+        assert alignment.alignlen() == 0
+
+    def test_samplecols_samplesize_too_large(self):
+        """Test sampling more columns than exist (should raise an error)."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        with pytest.raises(sq.SeqError, match="Requested samplesize larger than length of alignment"):
+            alignment.samplecols(10)  # Attempt to sample more columns than the alignment length
+
+    def test_samplecols_negative_samplesize(self):
+        """Test sampling a negative number of columns (should raise an error)."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        with pytest.raises(sq.SeqError, match="Requested samplesize is negative - must be positive integer"):
+            alignment.samplecols(-1)  # Attempt to sample a negative number of columns
+
+    def test_samplecols_randomness(self):
+        """Test that sampling columns produces a random subset each time."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCGGCTA")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTACCGT")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Seed the random generator for reproducibility in the test
+        random.seed(42)
+        alignment.samplecols(4)
+        sampled_cols_first_run = [seq.seq for seq in alignment]
+
+        # Reset the alignment and seed again
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+        random.seed(43)
+        alignment.samplecols(4)
+        sampled_cols_second_run = [seq.seq for seq in alignment]
+
+        # Check that different seeds produce different results
+        assert sampled_cols_first_run != sampled_cols_second_run
+
+###################################################################################################
+
 class Test_Seq_alignment_conscols:
     """Test suite for the conscols method in Seq_alignment."""
 
@@ -3965,5 +4059,781 @@ class Test_Seq_alignment_endgapfraclist:
         # End gap fraction list should be empty
         assert endgapfrac == []
         
+###################################################################################################
+
+class Test_Seq_alignment_remendgapseqs:
+    """Test suite for the remendgapseqs method in Seq_alignment."""
+
+    def test_remendgapseqs_valid_cutoff(self):
+        """Test removing sequences with end gaps above a specified cutoff."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG-")
+        seq2 = sq.DNA_sequence(name="seq2", seq="--GTA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="AGCTA")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+        alignment.addseq(seq3)
+
+        # Remove sequences with end gaps of 2 or more
+        alignment.remendgapseqs(cutoff=2)
+
+        # Only seq1 and seq3 should remain
+        assert alignment.getnames() == ["seq1", "seq3"]
+
+    def test_remendgapseqs_cutoff_none(self):
+        """Test that providing no cutoff raises an exception."""
+        alignment = sq.Seq_alignment(name="alignment")
+
+        with pytest.raises(sq.SeqError, match="Must provide cutoff"):
+            alignment.remendgapseqs(cutoff=None)
+
+    def test_remendgapseqs_no_removal(self):
+        """Test when no sequences have end gaps above the cutoff."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG-")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GTA--")
+        seq3 = sq.DNA_sequence(name="seq3", seq="AGCTA")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+        alignment.addseq(seq3)
+
+        # Remove sequences with end gaps of 3 or more
+        alignment.remendgapseqs(cutoff=3)
+
+        # No sequences should be removed
+        assert alignment.getnames() == ["seq1", "seq2", "seq3"]
+
+    def test_remendgapseqs_all_removed(self):
+        """Test when all sequences have end gaps above the cutoff."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="---C")
+        seq2 = sq.DNA_sequence(name="seq2", seq="A---")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Remove sequences with end gaps of 1 or more
+        alignment.remendgapseqs(cutoff=1)
+
+        # All sequences should be removed
+        assert alignment.getnames() == []
+        
+###################################################################################################
+
+class Test_Seq_alignment_remconscol:
+    """Test suite for the remconscol method in Seq_alignment."""
+
+    def test_remconscol_basic(self):
+        """Test removing conserved columns."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="ATCA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="ATCG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+        alignment.addseq(seq3)
+
+        alignment.remconscol()
+
+        # Columns 0, 1, and 2 are conserved, so only column 3 should remain
+        assert alignment.alignlen() == 1
+        assert alignment.getcolumn(0) == ["G", "A", "G"]
+
+    def test_remconscol_no_conserved_columns(self):
+        """Test when there are no conserved columns."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GTCA")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TCAG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+        alignment.addseq(seq3)
+
+        alignment.remconscol()
+
+        # No columns are conserved, so all should remain
+        assert alignment.alignlen() == 4
+        assert seq1.seq == "ATCG"
+        assert seq2.seq == "GTCA"
+        assert seq3.seq == "TCAG"
+
+    def test_remconscol_all_conserved_columns(self):
+        """Test when all columns are conserved."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="AAAA")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AAAA")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        alignment.remconscol()
+
+        # All columns are conserved, so none should remain
+        assert alignment.alignlen() == 0
+        
+###################################################################################################
+
+class Test_Seq_alignment_rem_hmmalign_insertcol:
+    """Test suite for the rem_hmmalign_insertcol method in Seq_alignment."""
+
+    # Python note: testing with mocked annotation fields. Should i read actual HMMer file?
+
+    def test_rem_hmmalign_insertcol_basic(self):
+        """Test removing insert state columns based on annotation."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="A-TCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GACTA")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Set annotation indicating an insert state at column 1
+        alignment.annotation = "mimmm"
+
+        alignment.rem_hmmalign_insertcol()
+
+        # Insert state at column 1 should be removed
+        assert alignment.alignlen() == 4
+        assert seq1.seq == "ATCG"
+        assert seq2.seq == "GCTA"
+
+    def test_rem_hmmalign_insertcol_no_annotation(self):
+        """Test behavior when there's no annotation (should raise an error)."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="A-TCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="G-CTA")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        with pytest.raises(sq.SeqError, match="This alignment contains no information about hmmalign insert states"):
+            alignment.rem_hmmalign_insertcol()
+
+    def test_rem_hmmalign_insertcol_no_insert_states(self):
+        """Test when there are no insert state columns in the annotation."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GCTA")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Set annotation indicating no insert states
+        alignment.annotation = "mmmm"
+
+        alignment.rem_hmmalign_insertcol()
+
+        # No insert state columns should be removed
+        assert all(seq.seq == original for seq, original in zip(alignment, ["ATCG", "GCTA"]))
+        
+###################################################################################################
+
+class Test_Seq_alignment_findgaps:
+    """Test suite for the findgaps method in Seq_alignment."""
+
+    def test_findgaps_no_gaps(self):
+        """Test finding gaps when there are no gaps in any sequence."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # There should be no gaps
+        assert alignment.findgaps() == []
+
+    def test_findgaps_single_gap(self):
+        """Test finding a single gap in one sequence."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG-")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTG-")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Both sequences have a gap at the same position
+        assert alignment.findgaps() == [(4, 4)]
+
+    def test_findgaps_multiple_gaps_same_positions(self):
+        """Test finding multiple gaps at the same positions in all sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="A-TCG-G")
+        seq2 = sq.DNA_sequence(name="seq2", seq="G-GTG-G")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Gaps are at positions 1 and 5 in both sequences
+        assert alignment.findgaps() == [(1, 1), (5, 5)]
+
+    def test_findgaps_multiple_gaps_different_positions(self):
+        """Test finding multiple gaps at different positions in the sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="A-TC-GG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGT-G-G")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Gaps are at different positions in the sequences
+        assert alignment.findgaps() == [(1, 1), (3,3),(4, 4), (5, 5)]
+
+    def test_findgaps_overlapping_gaps(self):
+        """Test finding overlapping gaps across sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="A-TCGG-")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGT-GG-")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Overlapping gaps should be found
+        assert alignment.findgaps() == [(1, 1), (3,3),(6, 6)]
+
+    def test_findgaps_consecutive_gaps(self):
+        """Test finding consecutive gaps in the sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATC--GG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGT--GG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Consecutive gaps spanning positions 3 to 4
+        assert alignment.findgaps() == [(3, 4)]
+
+    def test_findgaps_mixed_gap_positions(self):
+        """Test finding mixed gaps with different lengths and positions."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="A--TCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GG---G")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Gaps span different positions in the sequences
+        assert alignment.findgaps() == [(1, 2), (2, 4)]
+
+    def test_findgaps_large_alignment(self):
+        """Test finding gaps in a larger alignment with multiple sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATC---G")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTCG-G")
+        seq3 = sq.DNA_sequence(name="seq3", seq="AT---CG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+        alignment.addseq(seq3)
+
+        # Multiple gaps across sequences
+        assert alignment.findgaps() == [(2, 4), (3, 5), (5, 5)]
+
+    def test_findgaps_empty_alignment(self):
+        """Test findgaps method with an empty alignment."""
+        alignment = sq.Seq_alignment(name="alignment")
+        
+        # Empty alignment should return no gaps
+        assert alignment.findgaps() == []
+        
+###################################################################################################
+
+class Test_Seq_alignment_gap_encode:
+    """Test suite for the gap_encode method in Seq_alignment."""
+
+    def test_gap_encode_no_gaps(self):
+        """Test gap encoding when there are no gaps in any sequence."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Create the gap encoding alignment
+        gap_alignment = alignment.gap_encode()
+
+        # Check that the gap encoding contains no gaps (all zeros)
+        assert len(gap_alignment) == 2
+        assert gap_alignment.getseq("seq1").seq == ""  # No gaps, so no binary encoding
+        assert gap_alignment.getseq("seq2").seq == ""
+
+    def test_gap_encode_single_gap(self):
+        """Test gap encoding with a single gap of multiple residues in one sequence."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG--")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTGCG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Create the gap encoding alignment
+        gap_alignment = alignment.gap_encode()
+
+        # Check that the gap encoding reflects the single gap correctly
+        assert len(gap_alignment) == 2
+        assert gap_alignment.getseq("seq1").seq == "1"  # (4, 5)
+        assert gap_alignment.getseq("seq2").seq == "0"
+
+    def test_gap_encode_multiple_gaps(self):
+        """Test gap encoding with multiple gaps at different positions in sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="A---TCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GGTC---")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Create the gap encoding alignment
+        gap_alignment = alignment.gap_encode()
+
+        # Check that the gap encoding reflects gaps at different positions correctly
+        assert len(gap_alignment) == 2
+        assert gap_alignment.getseq("seq1").seq == "10"  # (1, 3), (4, 6)
+        assert gap_alignment.getseq("seq2").seq == "01"
+
+    def test_gap_encode_overlapping_gaps(self):
+        """Test gap encoding with overlapping gaps across sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="A--TCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GG--CG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Create the gap encoding alignment
+        gap_alignment = alignment.gap_encode()
+
+        # Check that the gap encoding reflects overlapping gaps
+        assert len(gap_alignment) == 2
+        assert gap_alignment.getseq("seq1").seq == "10"  # (1, 2)
+        assert gap_alignment.getseq("seq2").seq == "01"  # (2, 3)
+
+    def test_gap_encode_same_gap(self):
+        """Test gap encoding with same gap in the sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="AT--CGG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GG--CGA")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Create the gap encoding alignment
+        gap_alignment = alignment.gap_encode()
+
+        # Check that the gap encoding reflects consecutive gaps correctly
+        assert len(gap_alignment) == 2
+        assert gap_alignment.getseq("seq1").seq == "1"  # (2, 3)
+        assert gap_alignment.getseq("seq2").seq == "1"
+
+    def test_gap_encode_empty_alignment(self):
+        """Test gap encoding with an empty alignment."""
+        alignment = sq.Seq_alignment(name="alignment")
+
+        # Create the gap encoding alignment
+        gap_alignment = alignment.gap_encode()
+
+        # Check that the gap encoding is empty
+        assert len(gap_alignment) == 0
+
+    def test_gap_encode_all_gaps(self):
+        """Test gap encoding with sequences that are entirely gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="------")
+        seq2 = sq.DNA_sequence(name="seq2", seq="------")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Create the gap encoding alignment
+        gap_alignment = alignment.gap_encode()
+
+        # Check that the gap encoding is all ones
+        assert len(gap_alignment) == 2
+        assert gap_alignment.getseq("seq1").seq == "1"  # Single continuous gap (0, 5)
+        assert gap_alignment.getseq("seq2").seq == "1"
+
+###################################################################################################
+
+class Test_Seq_alignment_align_seq_pos_cache_builder:
+    """Test suite for the align_seq_pos_cache_builder method in Seq_alignment."""
+
+    def test_align_seq_pos_cache_builder_basic(self):
+        """Test cache builder with a simple sequence."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="AT-CG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+
+        # Build cache
+        alignment.align_seq_pos_cache_builder("seq1")
+
+        # Check that the cache is correctly built
+        assert alignment.seqpos2alignpos_cache["seq1"] == [0, 1, 3, 4]
+        assert alignment.alignpos2seqpos_cache["seq1"] == {
+            0: (0, False),
+            1: (1, False),
+            2: (1, True),  # Gap
+            3: (2, False),
+            4: (3, False),
+        }
+
+    def test_align_seq_pos_cache_builder_all_gaps(self):
+        """Test cache builder with a sequence containing only gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="----")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+
+        # Build cache
+        alignment.align_seq_pos_cache_builder("seq1")
+
+        # Check that the cache is correctly built
+        assert alignment.seqpos2alignpos_cache["seq1"] == []
+        assert alignment.alignpos2seqpos_cache["seq1"] == {
+            0: (-1, True),
+            1: (-1, True),
+            2: (-1, True),
+            3: (-1, True),
+        }
+
+    def test_align_seq_pos_cache_builder_no_gaps(self):
+        """Test cache builder with a sequence with no gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+
+        # Build cache
+        alignment.align_seq_pos_cache_builder("seq1")
+
+        # Check that the cache is correctly built
+        assert alignment.seqpos2alignpos_cache["seq1"] == [0, 1, 2, 3]
+        assert alignment.alignpos2seqpos_cache["seq1"] == {
+            0: (0, False),
+            1: (1, False),
+            2: (2, False),
+            3: (3, False),
+        }     
+        
+###################################################################################################
+
+class Test_Seq_alignment_seqpos2alignpos:
+    """Test suite for the seqpos2alignpos method in Seq_alignment."""
+
+    def test_seqpos2alignpos_basic(self):
+        """Test seqpos2alignpos with basic sequences and default slice syntax."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="AT-CG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+
+        # Retrieve alignment position corresponding to a sequence position
+        assert alignment.seqpos2alignpos("seq1", 0) == 0  # A
+        assert alignment.seqpos2alignpos("seq1", 1) == 1  # T
+        assert alignment.seqpos2alignpos("seq1", 2) == 3  # C
+        assert alignment.seqpos2alignpos("seq1", 3) == 4  # G
+
+    def test_seqpos2alignpos_non_slicesyntax(self):
+        """Test seqpos2alignpos with non-slicesyntax."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="AT-CG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+
+        # Retrieve alignment position corresponding to a sequence position with non-slicesyntax
+        assert alignment.seqpos2alignpos("seq1", 1, slicesyntax=False) == 1
+        assert alignment.seqpos2alignpos("seq1", 2, slicesyntax=False) == 2
+        assert alignment.seqpos2alignpos("seq1", 3, slicesyntax=False) == 4
+        assert alignment.seqpos2alignpos("seq1", 4, slicesyntax=False) == 5
+
+    def test_seqpos2alignpos_out_of_range(self):
+        """Test seqpos2alignpos with a sequence position that is out of range."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="AT-CG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+
+        with pytest.raises(IndexError):
+            alignment.seqpos2alignpos("seq1", 5)  # Out of range
+
+    def test_seqpos2alignpos_invalid_seqname(self):
+        """Test seqpos2alignpos with an invalid sequence name."""
+        alignment = sq.Seq_alignment(name="alignment")
+
+        with pytest.raises(sq.SeqError):
+            alignment.seqpos2alignpos("seq_invalid", 0)   
+            
+###################################################################################################
+
+class Test_Seq_alignment_alignpos2seqpos:
+    """Test suite for the alignpos2seqpos method in Seq_alignment."""
+
+    def test_alignpos2seqpos_basic(self):
+        """Test alignpos2seqpos with basic sequences and default slice syntax."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="AT-CG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+
+        # Retrieve sequence position and gap status corresponding to an alignment position
+        assert alignment.alignpos2seqpos("seq1", 0) == (0, False)  # A
+        assert alignment.alignpos2seqpos("seq1", 1) == (1, False)  # T
+        assert alignment.alignpos2seqpos("seq1", 2) == (1, True)   # Gap
+        assert alignment.alignpos2seqpos("seq1", 3) == (2, False)  # C
+        assert alignment.alignpos2seqpos("seq1", 4) == (3, False)  # G
+
+    def test_alignpos2seqpos_non_slicesyntax(self):
+        """Test alignpos2seqpos with non-slicesyntax."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="AT-CG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+
+        # Retrieve sequence position and gap status with non-slicesyntax
+        assert alignment.alignpos2seqpos("seq1", 1, slicesyntax=False) == (1, False)
+        assert alignment.alignpos2seqpos("seq1", 2, slicesyntax=False) == (2, False)
+        assert alignment.alignpos2seqpos("seq1", 3, slicesyntax=False) == (2, True)
+        assert alignment.alignpos2seqpos("seq1", 4, slicesyntax=False) == (3, False)
+        assert alignment.alignpos2seqpos("seq1", 5, slicesyntax=False) == (4, False)
+
+    def test_alignpos2seqpos_out_of_range(self):
+        """Test alignpos2seqpos with an alignment position that is out of range."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="AT-CG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+
+        with pytest.raises(KeyError):
+            alignment.alignpos2seqpos("seq1", 5)  # Out of range
+
+    def test_alignpos2seqpos_invalid_seqname(self):
+        """Test alignpos2seqpos with an invalid sequence name."""
+        alignment = sq.Seq_alignment(name="alignment")
+
+        with pytest.raises(sq.SeqError):
+            alignment.alignpos2seqpos("seq_invalid", 0)
+            
+###################################################################################################
+
+class Test_Seq_alignment_shannon:
+    """Test suite for the shannon method in Seq_alignment."""
+
+    def test_shannon_countgaps_true(self):
+        """Test Shannon entropy calculation with countgaps=True."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATGC")
+        seq2 = sq.DNA_sequence(name="seq2", seq="A-CC")
+        seq3 = sq.DNA_sequence(name="seq3", seq="AT-C")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+        alignment.addseq(seq3)
+
+        # Compute Shannon entropy with gaps counted as symbols
+        shannon_entropies = alignment.shannon(countgaps=True)
+
+        # Calculate expected Shannon entropy values manually
+        expected_entropies = [
+            -(3/3 * log(3/3, 2)),  # Column 0: A, A, A (no variation)
+            -(2/3 * log(2/3, 2) + 1/3 * log(1/3, 2)),  # Column 1: T, -, T
+            -(1/3 * log(1/3, 2) + 1/3 * log(1/3, 2) + 1/3 * log(1/3, 2)),  # Column 2: G, C, -
+            0.0  # Column 3: C, C, C (no variation)
+        ]
+
+        # Assert the results are close due to floating point precision
+        assert all(abs(a - b) < 1e-6 for a, b in zip(shannon_entropies, expected_entropies))
+
+    def test_shannon_countgaps_false(self):
+        """Test Shannon entropy calculation with countgaps=False."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATGC")
+        seq2 = sq.DNA_sequence(name="seq2", seq="A-CC")
+        seq3 = sq.DNA_sequence(name="seq3", seq="AT-C")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+        alignment.addseq(seq3)
+
+        # Compute Shannon entropy without counting gaps as symbols
+        shannon_entropies = alignment.shannon(countgaps=False)
+
+        # Calculate expected Shannon entropy values manually
+        expected_entropies = [
+            0.0,  # Column 0: A, A, A (no variation)
+            0.0,  # Column 1: T, T (no variation, ignore gaps)
+            -(0.5 * log(0.5, 2) + 0.5 * log(0.5, 2)),  # Column 2: G, C (- ignored)
+            0.0   # Column 3: C, C, C (no variation)
+        ]
+
+        # Assert the results are close due to floating point precision
+        assert all(abs(a - b) < 1e-6 for a, b in zip(shannon_entropies, expected_entropies))
+
+    def test_shannon_all_gaps(self):
+        """Test Shannon entropy calculation on an alignment with all gaps in a column."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="----")
+        seq2 = sq.DNA_sequence(name="seq2", seq="----")
+        seq3 = sq.DNA_sequence(name="seq3", seq="----")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+        alignment.addseq(seq3)
+
+        # Compute Shannon entropy with gaps counted as symbols
+        shannon_entropies = alignment.shannon(countgaps=True)
+        # All gaps should lead to zero entropy (no variation)
+        expected_entropies = [0.0, 0.0, 0.0, 0.0]
+        assert shannon_entropies == expected_entropies
+
+        # Compute Shannon entropy without counting gaps
+        shannon_entropies = alignment.shannon(countgaps=False)
+        # No non-gap symbols should lead to entropy calculation of 0 for each column
+        expected_entropies = [0.0, 0.0, 0.0, 0.0]
+        assert shannon_entropies == expected_entropies
+
+    def test_shannon_empty_alignment(self):
+        """Test Shannon entropy calculation on an empty alignment."""
+        alignment = sq.Seq_alignment(name="alignment")
+        
+        with pytest.raises(sq.SeqError):
+            alignment.shannon(countgaps=True)
+
+###################################################################################################
+
+class Test_Seq_alignment_nucfreq:
+    """Test suite for the nucfreq method in Seq_alignment."""
+
+    def test_nucfreq_all_positions(self):
+        """Test nucleotide frequency distribution for all positions in the alignment."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="ATGC")
+        seq3 = sq.DNA_sequence(name="seq3", seq="ATGG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+        alignment.addseq(seq3)
+
+        # Calculate nucleotide frequencies for all positions
+        freqmat = alignment.nucfreq()
+
+        # Expected frequency matrix
+        # Column 1: [A, A, A] => A:1.0, C:0.0, G:0.0, T:0.0
+        # Column 2: [T, T, T] => A:0.0, C:0.0, G:0.0, T:1.0
+        # Column 3: [C, G, G] => A:0.0, C:0.33, G:0.67, T:0.0
+        # Column 4: [G, C, G] => A:0.0, C:0.33, G:0.67, T:0.0
+        expected_freqmat = np.array([
+            [1.0, 0.0, 0.0, 0.0],  # Column 1
+            [0.0, 0.0, 0.0, 1.0],  # Column 2
+            [0.0, 0.33, 0.67, 0.0],  # Column 3
+            [0.0, 0.33, 0.67, 0.0]   # Column 4
+        ])
+
+        # Assert that the frequency matrix is close due to floating-point precision
+        np.testing.assert_almost_equal(freqmat, expected_freqmat, decimal=2)
+
+    def test_nucfreq_specific_positions(self):
+        """Test nucleotide frequency distribution for specific positions in the alignment."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="ATGC")
+        seq3 = sq.DNA_sequence(name="seq3", seq="ATGG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+        alignment.addseq(seq3)
+
+        # Calculate nucleotide frequencies for specified positions [1, 3]
+        freqmat = alignment.nucfreq(poslist=[1, 3])
+
+        # Expected frequency matrix for positions [1, 3]
+        expected_freqmat = np.array([
+            [0.0, 0.0, 0.0, 1.0],  # Column 2
+            [0.0, 0.33, 0.67, 0.0]  # Column 4
+        ])
+
+        # Assert that the frequency matrix is close due to floating-point precision
+        np.testing.assert_almost_equal(freqmat, expected_freqmat, decimal=2)
+
+    def test_nucfreq_no_valid_nucleotides(self):
+        """Test nucleotide frequency distribution when no valid nucleotides are present (all gaps)."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="--")
+        seq2 = sq.DNA_sequence(name="seq2", seq="--")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Calculate nucleotide frequencies for all positions
+        freqmat = alignment.nucfreq()
+
+        # Expected to handle all-gaps by returning zero frequencies
+        expected_freqmat = np.array([
+            [0.0, 0.0, 0.0, 0.0],  # Column 1
+            [0.0, 0.0, 0.0, 0.0]  # Column 2
+        ])
+
+        # Assert that the frequency matrix is close due to floating-point precision
+        np.testing.assert_almost_equal(freqmat, expected_freqmat, decimal=2)
+
+###################################################################################################
+
+class Test_Seq_alignment_consensus:
+    """Test suite for the consensus method in Seq_alignment."""
+
+    def test_consensus_basic(self):
+        """Test the consensus sequence generation for a basic set of sequences."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="ATGC")
+        seq3 = sq.DNA_sequence(name="seq3", seq="ATGG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+        alignment.addseq(seq3)
+
+        # Compute consensus sequence
+        consensus_seq = alignment.consensus()
+
+        # Expected consensus sequence: "ATGG"
+        assert consensus_seq.seq == "ATGG"
+        assert consensus_seq.name == "alignment"
+        assert consensus_seq.seqtype == "DNA"
+
+    def test_consensus_basic_protein(self):
+        """Test the consensus sequence generation for a basic set of protein sequences."""
+        seq1 = sq.Protein_sequence(name="seq1", seq="KLMN")
+        seq2 = sq.Protein_sequence(name="seq2", seq="KLRT")
+        seq3 = sq.Protein_sequence(name="seq3", seq="KLRN")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+        alignment.addseq(seq3)
+
+        # Compute consensus sequence
+        consensus_seq = alignment.consensus()
+
+        # Expected consensus sequence: "KLRN"
+        assert consensus_seq.seq == "KLRN"
+        assert consensus_seq.name == "alignment"
+        assert consensus_seq.seqtype == "protein"
+
+    def test_consensus_with_gaps(self):
+        """Test the consensus sequence generation with gaps in the alignment."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="A-GG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="-TGC")
+        seq3 = sq.DNA_sequence(name="seq3", seq="-T-G")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+        alignment.addseq(seq3)
+
+        # Compute consensus sequence
+        consensus_seq = alignment.consensus()
+
+        # Expected consensus sequence: "-TGG"
+        assert consensus_seq.seq == "-TGG"
+
+    def test_consensus_tie(self):
+        """Test the consensus sequence when there is a tie in the most frequent symbol."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="GTCG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Compute consensus sequence
+        consensus_seq = alignment.consensus()
+
+        # Expected consensus sequence: either "ATCG" or "GTCG"
+        assert consensus_seq.seq in ["ATCG", "GTCG"]
+
+    def test_consensus_empty_alignment(self):
+        """Test the consensus sequence generation on an empty alignment."""
+        alignment = sq.Seq_alignment(name="alignment")
+
+        with pytest.raises(IndexError):
+            alignment.consensus()
+
+    def test_consensus_all_gaps(self):
+        """Test the consensus sequence when all sequences are gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="----")
+        seq2 = sq.DNA_sequence(name="seq2", seq="----")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Compute consensus sequence
+        consensus_seq = alignment.consensus()
+
+        # Expected consensus sequence: "----" (all gaps)
+        assert consensus_seq.seq == "----"
+                
 ###################################################################################################
 
