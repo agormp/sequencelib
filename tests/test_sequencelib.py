@@ -5,6 +5,7 @@ import re
 import numpy as np
 import collections
 import itertools
+import math
 from collections import Counter
 from math import log
 
@@ -5151,3 +5152,176 @@ class Test_Seq_alignment_distdict:
         assert dist_matrix["seq1"]["seq1"] is None
         
 ###################################################################################################
+
+class Test_Seq_alignment_sequence_diversity:
+    """Test suite for the sequence_diversity method in Seq_alignment."""
+
+    def setup_method(self):
+        """Setup method to create a base Seq_alignment object for testing."""
+        self.seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        self.seq2 = sq.DNA_sequence(name="seq2", seq="ATGG")
+        self.seq3 = sq.DNA_sequence(name="seq3", seq="TTGG")
+        self.alignment = sq.Seq_alignment(name="alignment")
+        self.alignment.addseq(self.seq1)
+        self.alignment.addseq(self.seq2)
+        self.alignment.addseq(self.seq3)
+
+    def test_sequence_diversity_default(self):
+        """Test sequence diversity with default settings (considering gaps)."""
+        mean, std, minpi, maxpi = self.alignment.sequence_diversity()
+
+        # Calculate expected mean and std using pairwise pdist
+        expected_distances = [
+            sq.Sequence.pdist(self.seq1, self.seq2),  # 1 mismatch out of 4
+            sq.Sequence.pdist(self.seq1, self.seq3),  # 2 mismatches out of 4
+            sq.Sequence.pdist(self.seq2, self.seq3)   # 1 mismatch out of 4
+        ]
+        expected_mean = sum(expected_distances) / len(expected_distances)
+        expected_variance = sum((d - expected_mean) ** 2 for d in expected_distances) / len(expected_distances)
+        expected_std = math.sqrt(expected_variance)
+
+        assert mean == pytest.approx(expected_mean, rel=1e-5)
+        assert std == pytest.approx(expected_std, rel=1e-5)
+        assert minpi == pytest.approx(min(expected_distances), rel=1e-5)
+        assert maxpi == pytest.approx(max(expected_distances), rel=1e-5)
+
+    def test_sequence_diversity_ignoregaps(self):
+        """Test sequence diversity while ignoring gaps."""
+        seq4 = sq.DNA_sequence(name="seq4", seq="A-CG")
+        alignment_with_gaps = sq.Seq_alignment(name="alignment_with_gaps")
+        alignment_with_gaps.addseq(self.seq1)
+        alignment_with_gaps.addseq(seq4)
+
+        mean, std, minpi, maxpi = alignment_with_gaps.sequence_diversity(ignoregaps=True)
+
+        # Calculate expected mean and std using pairwise pdist_ignoregaps
+        expected_distances = [
+            sq.Sequence.pdist_ignoregaps(self.seq1, seq4)  # No mismatches when ignoring gaps
+        ]
+        expected_mean = sum(expected_distances) / len(expected_distances)
+        expected_variance = sum((d - expected_mean) ** 2 for d in expected_distances) / len(expected_distances)
+        expected_std = math.sqrt(expected_variance)
+
+        assert mean == pytest.approx(expected_mean, rel=1e-5)
+        assert std == pytest.approx(expected_std, rel=1e-5)
+        assert minpi == pytest.approx(min(expected_distances), rel=1e-5)
+        assert maxpi == pytest.approx(max(expected_distances), rel=1e-5)
+
+    def test_sequence_diversity_single_sequence(self):
+      """Test that sequence diversity raises an error with only one sequence."""
+      single_seq_alignment = sq.Seq_alignment(name="single_seq_alignment")
+      single_seq_alignment.addseq(self.seq1)
+
+      # Expect an error when trying to compute diversity with a single sequence
+      with pytest.raises(sq.SeqError, match="Can't compute diversity for alignment with less than 2 sequences"):
+          single_seq_alignment.sequence_diversity()
+
+    def test_sequence_diversity_no_sequences(self):
+        """Test sequence diversity with an empty alignment (should return zeros for mean, std, minpi, maxpi)."""
+        empty_alignment = sq.Seq_alignment(name="empty_alignment")
+
+        # Expect an error when trying to compute diversity with no sequences
+        with pytest.raises(sq.SeqError, match="Can't compute diversity for alignment with less than 2 sequences"):
+          empty_alignment.sequence_diversity()
+
+###################################################################################################
+
+class Test_Seq_alignment_overlap:
+    """Test suite for the overlap method in Seq_alignment."""
+
+    def test_overlap_no_gaps(self):
+        """Test overlap calculation with no gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ACGT")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AGTT")
+        alignment1 = sq.Seq_alignment(name="alignment1")
+        alignment1.addseq(seq1)
+        alignment1.addseq(seq2)
+
+        seq3 = sq.DNA_sequence(name="seq1", seq="ACGT")
+        seq4 = sq.DNA_sequence(name="seq2", seq="AGTT")
+        alignment2 = sq.Seq_alignment(name="alignment2")
+        alignment2.addseq(seq3)
+        alignment2.addseq(seq4)
+
+        overlap_fraction = alignment1.overlap(alignment2)
+
+        assert overlap_fraction == pytest.approx(1.0, rel=1e-5)  # Expect full overlap
+
+    def test_overlap_with_gaps_included(self):
+        """Test overlap calculation with single gap."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="AAAA")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AA-A")
+        alignment1 = sq.Seq_alignment(name="alignment1")
+        alignment1.addseq(seq1)
+        alignment1.addseq(seq2)
+
+        seq3 = sq.DNA_sequence(name="seq1", seq="AAAA")
+        seq4 = sq.DNA_sequence(name="seq2", seq="A-AA")
+        alignment2 = sq.Seq_alignment(name="alignment2")
+        alignment2.addseq(seq3)
+        alignment2.addseq(seq4)
+
+        overlap_fraction = alignment1.overlap(alignment2)
+
+        # 2/4 alignment columns agree
+        assert overlap_fraction == pytest.approx(0.5, rel=1e-5)
+
+    def test_overlap_no_overlap(self):
+        """Test overlap when there is no alignment overlap."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ACGT")
+        seq2 = sq.DNA_sequence(name="seq2", seq="TGCA")
+        alignment1 = sq.Seq_alignment(name="alignment1")
+        alignment1.addseq(seq1)
+        alignment1.addseq(seq2)
+
+        seq3 = sq.DNA_sequence(name="seq1", seq="ACGT-")
+        seq4 = sq.DNA_sequence(name="seq2", seq="-TGCA")
+        alignment2 = sq.Seq_alignment(name="alignment2")
+        alignment2.addseq(seq3)
+        alignment2.addseq(seq4)
+
+        overlap_fraction = alignment1.overlap(alignment2)
+
+        assert overlap_fraction == pytest.approx(0.0, rel=1e-5)  # No overlap
+
+    def test_overlap_different_sequence_names(self):
+        """Test overlap with alignments having different sequence names."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ACGT")
+        seq2 = sq.DNA_sequence(name="seq3", seq="TGCA")
+        alignment1 = sq.Seq_alignment(name="alignment1")
+        alignment1.addseq(seq1)
+        alignment1.addseq(seq2)
+
+        seq3 = sq.DNA_sequence(name="seq1", seq="TGCA")
+        seq4 = sq.DNA_sequence(name="seq4", seq="ACGT")
+        alignment2 = sq.Seq_alignment(name="alignment2")
+        alignment2.addseq(seq3)
+        alignment2.addseq(seq4)
+
+        with pytest.raises(sq.SeqError, match="Alignments do not contain same sequences - not possible to compute overlap"):
+            alignment1.overlap(alignment2)
+
+    def test_overlap_multiple_gaps(self):
+        """Test overlap when alignments contain all gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="---A")
+        seq2 = sq.DNA_sequence(name="seq2", seq="---T")
+        alignment1 = sq.Seq_alignment(name="alignment1")
+        alignment1.addseq(seq1)
+        alignment1.addseq(seq2)
+
+        seq3 = sq.DNA_sequence(name="seq1", seq="--A-")
+        seq4 = sq.DNA_sequence(name="seq2", seq="--T-")
+        alignment2 = sq.Seq_alignment(name="alignment2")
+        alignment2.addseq(seq3)
+        alignment2.addseq(seq4)
+
+        overlap_fraction = alignment1.overlap(alignment2)
+
+        # Expect overlap to be 0.5 as gaps are treated as residues when discardgaps is False
+        assert overlap_fraction == pytest.approx(0.5, rel=1e-5)
+
+###################################################################################################
+
+
+
+
