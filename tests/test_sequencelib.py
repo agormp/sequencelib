@@ -4,6 +4,7 @@ import random
 import re
 import numpy as np
 import collections
+import itertools
 from collections import Counter
 from math import log
 
@@ -641,7 +642,7 @@ class Test_pdist_ignoregaps_DNA:
                     ngaps += 1
                 dnaseq2[j] = "T"
             pdist = dnaseq1.pdist_ignoregaps(dnaseq2)
-            assert pdist == (nmut - ngaps) / self.seqlen
+            assert pdist == (nmut - ngaps) / (self.seqlen - ngaps)
 
 ###################################################################################################
 
@@ -4837,3 +4838,316 @@ class Test_Seq_alignment_consensus:
                 
 ###################################################################################################
 
+class Test_Seq_alignment_seqset:
+    """Test suite for the seqset method in Seq_alignment."""
+
+    def test_seqset_basic(self):
+        """Test removing gaps and returning a Seq_set object for a basic alignment."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="AT-CG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="A-TGC")
+        seq3 = sq.DNA_sequence(name="seq3", seq="ATG-C")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+        alignment.addseq(seq3)
+
+        # Convert alignment to Seq_set (removing gaps)
+        seqset = alignment.seqset()
+
+        # Check that the result is a Seq_set object
+        assert isinstance(seqset, sq.Seq_set)
+
+        # Check the names and sequences in the Seq_set object
+        assert seqset.getseq("seq1").seq == "ATCG"
+        assert seqset.getseq("seq2").seq == "ATGC"
+        assert seqset.getseq("seq3").seq == "ATGC"
+
+    def test_seqset_with_multiple_gaps(self):
+        """Test removing multiple gaps from sequences and returning a Seq_set object."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="A--T-CG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="-A-TG-C")
+        seq3 = sq.DNA_sequence(name="seq3", seq="--AT-GC")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+        alignment.addseq(seq3)
+
+        # Convert alignment to Seq_set (removing gaps)
+        seqset = alignment.seqset()
+
+        # Check that the result is a Seq_set object
+        assert isinstance(seqset, sq.Seq_set)
+
+        # Check the names and sequences in the Seq_set object
+        assert seqset.getseq("seq1").seq == "ATCG"
+        assert seqset.getseq("seq2").seq == "ATGC"
+        assert seqset.getseq("seq3").seq == "ATGC"
+
+    def test_seqset_no_gaps(self):
+        """Test returning a Seq_set object when there are no gaps in the alignment."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="ATGC")
+        seq3 = sq.DNA_sequence(name="seq3", seq="ATGG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+        alignment.addseq(seq3)
+
+        # Convert alignment to Seq_set (removing gaps)
+        seqset = alignment.seqset()
+
+        # Check that the result is a Seq_set object
+        assert isinstance(seqset, sq.Seq_set)
+
+        # Check the names and sequences in the Seq_set object remain unchanged
+        assert seqset.getseq("seq1").seq == "ATCG"
+        assert seqset.getseq("seq2").seq == "ATGC"
+        assert seqset.getseq("seq3").seq == "ATGG"
+
+    def test_seqset_all_gaps(self):
+        """Test returning a Seq_set object when sequences consist entirely of gaps."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="----")
+        seq2 = sq.DNA_sequence(name="seq2", seq="----")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Convert alignment to Seq_set (removing gaps)
+        seqset = alignment.seqset()
+
+        # Check that the result is a Seq_set object
+        assert isinstance(seqset, sq.Seq_set)
+
+        # Check that the sequences in the Seq_set object are empty after removing gaps
+        assert seqset.getseq("seq1").seq == ""
+        assert seqset.getseq("seq2").seq == ""
+
+    def test_seqset_empty_alignment(self):
+        """Test returning a Seq_set object when the alignment is empty."""
+        alignment = sq.Seq_alignment(name="empty_alignment")
+
+        # Convert alignment to Seq_set (removing gaps)
+        seqset = alignment.seqset()
+
+        # Check that the result is a Seq_set object
+        assert isinstance(seqset, sq.Seq_set)
+
+        # Check that the Seq_set object is empty
+        assert len(seqset) == 0
+        
+###################################################################################################
+
+class Test_Seq_alignment_partitions_as_seqalignments:
+    """Test suite for the partitions_as_seqalignments method in Seq_alignment."""
+
+    def test_partitions_as_seqalignments_basic(self):
+        """Test creating Seq_alignment objects for partitions in a basic alignment."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG--TG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AT-GCTAG")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Manually set partitions (for testing purposes)
+        alignment.partitions = [("Partition_01", 0, 4, "DNA"), ("Partition_02", 4, 4, "DNA")]
+
+        # Retrieve partitions as Seq_alignment objects
+        partitions = alignment.partitions_as_seqalignments()
+
+        # Check that the partitions are correctly returned as Seq_alignment objects
+        assert len(partitions) == 2
+        assert isinstance(partitions[0], sq.Seq_alignment)
+        assert isinstance(partitions[1], sq.Seq_alignment)
+        
+        # Check the content of the first partition
+        assert partitions[0].name == "Partition_01"
+        assert partitions[0].alignlen() == 4
+        assert partitions[0].getseq("seq1_0_4").seq == "ATCG"
+        assert partitions[0].getseq("seq2_0_4").seq == "AT-G"
+
+        # Check the content of the second partition
+        assert partitions[1].name == "Partition_02"
+        assert partitions[1].alignlen() == 4
+        assert partitions[1].getseq("seq1_4_8").seq == "--TG"
+        assert partitions[1].getseq("seq2_4_8").seq == "CTAG"
+
+    def test_partitions_as_seqalignments_with_one_partition(self):
+        """Test behavior when there are no partitions defined in the alignment."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq2 = sq.DNA_sequence(name="seq2", seq="TAGC")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Retrieve partitions as Seq_alignment objects
+        partitions = alignment.partitions_as_seqalignments()
+
+        # Check that there is one partition correctly returned as Seq_alignment object
+        assert len(partitions) == 1
+        assert isinstance(partitions[0], sq.Seq_alignment)
+
+        # Check the content of the first partition
+        assert partitions[0].name == "alignment"
+        assert partitions[0].alignlen() == 4
+        assert partitions[0].getseq("seq1_0_4").seq == "ATCG"
+        assert partitions[0].getseq("seq2_0_4").seq == "TAGC"
+
+    def test_partitions_as_seqalignments_with_unnamed_partitions(self):
+        """Test creating Seq_alignment objects for unnamed partitions in an alignment."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCGGCTA")
+        seq2 = sq.DNA_sequence(name="seq2", seq="TAGC--TA")
+        alignment = sq.Seq_alignment(name="alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Manually set partitions with None or "Partition" names
+        alignment.partitions = [(None, 0, 4, "DNA"), ("Partition", 4, 4, "DNA")]
+
+        # Retrieve partitions as Seq_alignment objects
+        partitions = alignment.partitions_as_seqalignments()
+
+        # Check that the partitions are correctly returned as Seq_alignment objects
+        assert len(partitions) == 2
+        assert isinstance(partitions[0], sq.Seq_alignment)
+        assert isinstance(partitions[1], sq.Seq_alignment)
+
+        # Check the names of the partitions
+        assert partitions[0].name == "partition_01"
+        assert partitions[1].name == "partition_02"
+
+    def test_partitions_as_seqalignments_large_alignment(self):
+        """Test creating Seq_alignment objects for a large alignment with multiple partitions."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCGGCTAGCTA")
+        seq2 = sq.DNA_sequence(name="seq2", seq="TAGC--TACGTA")
+        alignment = sq.Seq_alignment(name="large_alignment")
+        alignment.addseq(seq1)
+        alignment.addseq(seq2)
+
+        # Manually set partitions for a large alignment
+        alignment.partitions = [("Partition_01", 0, 4, "DNA"), ("Partition_02", 4, 4, "DNA"), ("Partition_03", 8, 4, "DNA")]
+
+        # Retrieve partitions as Seq_alignment objects
+        partitions = alignment.partitions_as_seqalignments()
+
+        # Check that the partitions are correctly returned as Seq_alignment objects
+        assert len(partitions) == 3
+        assert isinstance(partitions[0], sq.Seq_alignment)
+        assert isinstance(partitions[1], sq.Seq_alignment)
+        assert isinstance(partitions[2], sq.Seq_alignment)
+
+        # Check the content of each partition
+        assert partitions[0].name == "Partition_01"
+        assert partitions[0].getseq("seq1_0_4").seq == "ATCG"
+        assert partitions[0].getseq("seq2_0_4").seq == "TAGC"
+        assert partitions[1].name == "Partition_02"
+        assert partitions[1].getseq("seq1_4_8").seq == "GCTA"
+        assert partitions[1].getseq("seq2_4_8").seq == "--TA"
+        assert partitions[2].name == "Partition_03"
+        assert partitions[2].getseq("seq1_8_12").seq == "GCTA"
+        assert partitions[2].getseq("seq2_8_12").seq == "CGTA"
+        
+###################################################################################################
+
+class Test_Seq_alignment_distdict:
+    """Test suite for the distdict method in Seq_alignment."""
+
+    def setup_method(self):
+        """Setup method to create a base Seq_alignment object for testing."""
+        self.seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        self.seq2 = sq.DNA_sequence(name="seq2", seq="ATGG")
+        self.seq3 = sq.DNA_sequence(name="seq3", seq="TTGG")
+        self.alignment = sq.Seq_alignment(name="alignment")
+        self.alignment.addseq(self.seq1)
+        self.alignment.addseq(self.seq2)
+        self.alignment.addseq(self.seq3)
+
+    def test_distdict_default_pdist(self):
+        """Test distdict with the default pdist method."""
+        dist_matrix = self.alignment.distdict()
+
+        # Check the structure of the distdict output
+        assert isinstance(dist_matrix, dict)
+        assert len(dist_matrix) == 3
+        assert all(len(dist_matrix[key]) == 3 for key in dist_matrix)
+        
+        # Check that diagonal elements are None (no self-comparison)
+        assert dist_matrix["seq1"]["seq1"] is None
+        assert dist_matrix["seq2"]["seq2"] is None
+        assert dist_matrix["seq3"]["seq3"] is None
+
+        # Check the values in the distance matrix using the pdist method (default)
+        assert dist_matrix["seq1"]["seq2"] == pytest.approx(1 / 4)  # 1 mismatch out of 4
+        assert dist_matrix["seq1"]["seq3"] == pytest.approx(2 / 4)  # 2 mismatches out of 4
+        assert dist_matrix["seq2"]["seq3"] == pytest.approx(1 / 4)  # 1 mismatch out of 4
+
+    def test_distdict_hamming(self):
+        """Test distdict with the hamming distance method."""
+        dist_matrix = self.alignment.distdict(dist="hamming")
+
+        # Check the structure of the distdict output
+        assert isinstance(dist_matrix, dict)
+        assert len(dist_matrix) == 3
+        assert all(len(dist_matrix[key]) == 3 for key in dist_matrix)
+
+        # Check the values in the distance matrix using the hamming method
+        assert dist_matrix["seq1"]["seq2"] == 1  # 1 mismatch
+        assert dist_matrix["seq1"]["seq3"] == 2  # 2 mismatches
+        assert dist_matrix["seq2"]["seq3"] == 1  # 1 mismatch
+
+    def test_distdict_hamming_ignoregaps(self):
+        """Test distdict with the hamming_ignoregaps distance method."""
+        seq4 = sq.DNA_sequence(name="seq4", seq="A-CT")
+        alignment_with_gaps = sq.Seq_alignment(name="alignment_with_gaps")
+        alignment_with_gaps.addseq(self.seq1)
+        alignment_with_gaps.addseq(seq4)
+
+        dist_matrix = alignment_with_gaps.distdict(dist="hamming_ignoregaps")
+
+        # Check the structure of the distdict output
+        assert isinstance(dist_matrix, dict)
+        assert len(dist_matrix) == 2
+        assert all(len(dist_matrix[key]) == 2 for key in dist_matrix)
+
+        # Check the values in the distance matrix ignoring gaps
+        assert dist_matrix["seq1"]["seq4"] == 1  # 1 mismatch (gaps ignored)
+        assert dist_matrix["seq4"]["seq1"] == 1  # 1 mismatch (gaps ignored)
+
+    def test_distdict_pdist_ignoregaps(self):
+        """Test distdict with the pdist_ignoregaps distance method."""
+        seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
+        seq4 = sq.DNA_sequence(name="seq4", seq="A-CT")
+        alignment_with_gaps = sq.Seq_alignment(name="alignment_with_gaps")
+        alignment_with_gaps.addseq(self.seq1)
+        alignment_with_gaps.addseq(seq4)
+
+        dist_matrix = alignment_with_gaps.distdict(dist="pdist_ignoregaps")
+
+        # Check the structure of the distdict output
+        assert isinstance(dist_matrix, dict)
+        assert len(dist_matrix) == 2
+        assert all(len(dist_matrix[key]) == 2 for key in dist_matrix)
+
+        # Check the values in the distance matrix ignoring gaps
+        assert dist_matrix["seq1"]["seq4"] == 1 / 3  # 1 mismatch on 3 positions (gaps ignored)
+        assert dist_matrix["seq4"]["seq1"] == 1 / 3  # 1 mismatch on 3 positions (gaps ignored)
+
+    def test_distdict_unknown_method(self):
+        """Test distdict with an unknown distance method, should raise an error."""
+        with pytest.raises(sq.SeqError, match="Unknown distance measure: unknown"):
+            self.alignment.distdict(dist="unknown")
+
+    def test_distdict_single_sequence(self):
+        """Test distdict with only one sequence in the alignment, should return a dict with None values."""
+        single_seq_alignment = sq.Seq_alignment(name="single_seq_alignment")
+        single_seq_alignment.addseq(self.seq1)
+        dist_matrix = single_seq_alignment.distdict()
+
+        # Check the structure of the distdict output
+        assert isinstance(dist_matrix, dict)
+        assert len(dist_matrix) == 1
+        assert len(dist_matrix["seq1"]) == 1
+
+        # Check that all values are None (since there's no other sequence to compare)
+        assert dist_matrix["seq1"]["seq1"] is None
+        
+###################################################################################################
