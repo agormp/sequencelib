@@ -2369,25 +2369,20 @@ class Seq_alignment(Sequences_base):
 
     #######################################################################################
 
-    def overlap(self, other, discardgaps=True):
+    def overlap(self, other):
         """Computes overlap between two alignments as fraction of identically paired residues"""
 
         # Implementation note: measure is based on representing each pairwise alignment (implied
-        # by the multiple alignment) as a "set of index_tuples" of this form: set((1,1), (2,2), (3,4), ...)
+        # by the multiple alignment) as a "list of index_tuples" of this form: set((1,1), (2,2), (3,4), ...)
         # Here each residue is represented by its index in the sequence (not counting gaps).
-        # Pairs where one or both symbols are gaps are discarded, unless discardgaps=False.
         # Thus the following alignment:
         #
         #  AC---GT
         #  A-T--GT
         #
-        # Would be: set((1,1), (3,3), (4,4)), or: set((1,1), (2,"-"), ("-",2), ("-","-"), (3,3), (4,4))
-        # Note that set() automatically removes duplicate entries (hence only one ("-","-") tuple).
+        # Would be: [(1,1), (2,"-"), ("-",2), ("-","-"), ("-","-"), (3,3), (4,4)]
         # Overlap for this seqpair is then found by first finding the set of tuples representation of the same
-        # seqpair in the second alignment, and then using set arithmetic to find the union of the
-        # set of tuples for the two alignments. overlapfrac = size of the union divided by avg set length
-        #
-        # Note 2: it might be relevant to represent gaps by "_residueindex" to differentiate gaps in different places
+        # seqpair in the second alignment, and then counting the number of identical tuples
 
         ###################################################################################
 
@@ -2407,10 +2402,14 @@ class Seq_alignment(Sequences_base):
 
         ###################################################################################
 
+        # Python note: should i test that degapped seqs are identical as expected? 
+        # Takes time so maybe optional
+
         if set(self.getnames()) != set(other.getnames()):
             raise SeqError("Alignments do not contain same sequences - not possible to compute overlap")
         numseqs = len(self)
-        overlapfrac = 0.0
+        numpairs = ((numseqs * (numseqs - 1)) / 2)
+        alignlen = self.alignlen()
 
         # Convert each sequence in each alignment to indexformat
         align1dict = {}
@@ -2423,17 +2422,14 @@ class Seq_alignment(Sequences_base):
         # For each pair of sequences in each alignment:
         # construct list of tuples representation of mapping, compute overlap by set arithmetic
         for s1, s2 in itertools.combinations(self, 2):
-            mapping1 = list(zip(align1dict[s1.name], align1dict[s2.name]))
-            mapping2 = list(zip(align2dict[s1.name], align2dict[s2.name]))
+                mapping1 = zip(align1dict[s1.name], align1dict[s2.name])
+                mapping2 = zip(align2dict[s1.name], align2dict[s2.name])
+                ident = 0
+                for tup1, tup2 in zip(mapping1, mapping2): 
+                    if tup1 == tup2:
+                        ident += 1
+        overlapfrac = ident / (numpairs * alignlen)
 
-            if discardgaps:
-                mapping1 = [tup for tup in mapping1 if "-" not in tup]
-                mapping2 = [tup for tup in mapping2 if "-" not in tup]
-
-            avglen = (len(mapping1) + len(mapping2)) / 2.0
-            overlapfrac += len(set(mapping1) & set(mapping2)) / avglen
-
-        overlapfrac = overlapfrac / ((numseqs * (numseqs - 1)) / 2)
         return overlapfrac
 
     #######################################################################################
