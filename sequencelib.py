@@ -2330,11 +2330,15 @@ class Seq_alignment(Sequences_base):
         Return mean, and standard deviation, as tuple: (mean, std)
         Discard pairwise gappy positions if requested.
         """
+        
         # Note: std should perhaps be computed according to Nei, Molecular Evolutionary Genetics, equation 10.7?
         # Here std is computed using Welfords 1962 single-pass algorithm
         # Correlations among pairwise distances are ignored
         mean_prev = var_prev = num_vals = 0.0
         nseqs = len(self)
+        
+        if nseqs < 2:
+            raise SeqError("Can't compute diversity for alignment with less than 2 sequences")
 
         if ignoregaps:
             distmethod = Sequence.pdist_ignoregaps
