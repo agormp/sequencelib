@@ -2451,7 +2451,7 @@ class Seq_alignment(Sequences_base):
         frontspace = max(lenlist) + 2
 
         # Header
-        phylip = ["%6d   %d\n" % (numseq, alignlen)]
+        phylip = [f"{numseq}   {alignlen}\n"]
 
         # First block, with names
         for seq in self:
