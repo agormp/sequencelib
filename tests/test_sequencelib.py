@@ -5247,16 +5247,16 @@ class Test_Seq_alignment_overlap:
 
         assert overlap_fraction == pytest.approx(1.0, rel=1e-5)  # Expect full overlap
 
-    def test_overlap_with_gaps_included(self):
+    def test_overlap_with_gaps(self):
         """Test overlap calculation with single gap."""
-        seq1 = sq.DNA_sequence(name="seq1", seq="AAAA")
-        seq2 = sq.DNA_sequence(name="seq2", seq="AA-A")
+        seq1 = sq.DNA_sequence(name="seq1", seq="AAAAT")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AA-AC")
         alignment1 = sq.Seq_alignment(name="alignment1")
         alignment1.addseq(seq1)
         alignment1.addseq(seq2)
 
-        seq3 = sq.DNA_sequence(name="seq1", seq="AAAA")
-        seq4 = sq.DNA_sequence(name="seq2", seq="A-AA")
+        seq3 = sq.DNA_sequence(name="seq1", seq="AAAAT")
+        seq4 = sq.DNA_sequence(name="seq2", seq="A-AAC")
         alignment2 = sq.Seq_alignment(name="alignment2")
         alignment2.addseq(seq3)
         alignment2.addseq(seq4)
@@ -5264,7 +5264,7 @@ class Test_Seq_alignment_overlap:
         overlap_fraction = alignment1.overlap(alignment2)
 
         # 2/4 alignment columns agree
-        assert overlap_fraction == pytest.approx(0.5, rel=1e-5)
+        assert overlap_fraction == pytest.approx(0.6, rel=1e-5)
 
     def test_overlap_no_overlap(self):
         """Test overlap when there is no alignment overlap."""
@@ -5322,6 +5322,61 @@ class Test_Seq_alignment_overlap:
 
 ###################################################################################################
 
+class Test_Seq_alignment_phylip:
+    """Test suite for the phylip method in Seq_alignment."""
+
+    def setup_method(self):
+        """Setup method to create a base Seq_alignment object for testing."""
+        self.seq1 = sq.DNA_sequence(name="seq1", seq="ACGTACGTACGT")
+        self.seq2 = sq.DNA_sequence(name="seq2", seq="TGCATGCATGCA")
+        
+        self.alignment = sq.Seq_alignment(name="test_alignment")
+        self.alignment.addseq(self.seq1)
+        self.alignment.addseq(self.seq2)
+
+    def test_phylip_default_width(self):
+        """Test PHYLIP formatting with default width."""
+        phylip_output = self.alignment.phylip()
+        expected_output = (
+            "2   12\n"
+            "seq1  ACGTACGTACGT\n"
+            "seq2  TGCATGCATGCA"
+        )
+
+        assert phylip_output == expected_output
+
+    def test_phylip_custom_width(self):
+        """Test PHYLIP formatting with a custom width."""
+
+        expected_output = (
+            "2   12\n"
+            "seq1  ACGT\n"
+            "seq2  TGCA\n"
+            "\n"
+            "      ACGT\n"
+            "      TGCA\n"
+            "\n"
+            "      ACGT\n"
+            "      TGCA"
+        )
+        phylip_output = self.alignment.phylip(width=4)
+        assert phylip_output == expected_output
+
+    def test_phylip_full_width(self):
+        """Test PHYLIP formatting with full width (no line breaks)."""
+        expected_output = (
+            "2   12\n"
+            "seq1  ACGTACGTACGT\n"
+            "seq2  TGCATGCATGCA"
+        )
+        phylip_output = self.alignment.phylip(width=12)
+        assert phylip_output == expected_output
+
+    def test_phylip_empty_alignment(self):
+        """Test PHYLIP formatting raises an error for empty alignment."""
+        empty_alignment = sq.Seq_alignment(name="empty_alignment")
+        with pytest.raises(sq.SeqError, match="No sequences in sequence set.  Can't create phylip"):
+            empty_alignment.phylip()
 
 
 
