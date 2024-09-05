@@ -2493,10 +2493,10 @@ class Seq_alignment(Sequences_base):
 
             # Predefined conserved and semiconserved amino acid sets for constructing conservation line
             # Information is kept in form of list of conserved sets
-            # Info taken from http://bioportal.cgb.indiana.edu/docs/tools/clustalw/clustalw.html
+            # Info taken from https://ebi-biows.gitdocs.ebi.ac.uk/documentation/faqs/clustal/
 
             cons_sub_strings = ["STA", "NEQK", "NHQK", "NDEQ", "QHRK", "MILV", "MILF", "HY", "FYW"]
-            semicons_sub_strings = ["CSA", "ATV", "SAG", "STNK", "STPA", "SGND", "SNDEQK", "NDEQHK", "NEQHRK", "FVLIM", "FVLIM"]
+            semicons_sub_strings = ["CSA", "ATV", "SAG", "STNK", "STPA", "SGND", "SNDEQK", "NDEQHK", "NEQHRK", "FVLIM", "HFY"]
 
             cons_sub = []
             for string in cons_sub_strings:
