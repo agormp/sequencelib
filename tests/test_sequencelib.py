@@ -5378,5 +5378,221 @@ class Test_Seq_alignment_phylip:
         with pytest.raises(sq.SeqError, match="No sequences in sequence set.  Can't create phylip"):
             empty_alignment.phylip()
 
+###################################################################################################
+
+class Test_Seq_alignment_clustal:
+    """Test suite for the clustal method in Seq_alignment."""
+
+    def setup_method(self):
+        """Setup method to create base Seq_alignment objects for testing."""
+        self.seq1 = sq.DNA_sequence(name="seq1", seq="ACGTACGTACGT")
+        self.seq2 = sq.DNA_sequence(name="seq2", seq="ACGTACGTACGA")
+        self.seq3 = sq.Protein_sequence(name="seq3", seq="MKVHHLNSAIA")
+        self.seq4 = sq.Protein_sequence(name="seq4", seq="MKVHFLEESIA")
+        self.seq5 = sq.Protein_sequence(name="seq5", seq="MKAYYLQQSIA")
+
+        self.dna_alignment = sq.Seq_alignment(name="dna_alignment")
+        self.dna_alignment.addseq(self.seq1)
+        self.dna_alignment.addseq(self.seq2)
+
+        self.protein_alignment = sq.Seq_alignment(name="protein_alignment", seqtype="protein")
+        self.protein_alignment.addseq(self.seq3)
+        self.protein_alignment.addseq(self.seq4)
+        self.protein_alignment.addseq(self.seq5)
+
+    def test_clustal_default_width_dna(self):
+        """Test Clustal formatting with default width for DNA alignment."""
+        expected_output = (
+            "CLUSTAL W (1.83) multiple sequence alignment\n\n\n"
+            "seq1      ACGTACGTACGT\n"
+            "seq2      ACGTACGTACGA\n"
+            "          *********** "
+        )
+        clustal_output = self.dna_alignment.clustal()
+        assert clustal_output == expected_output
+
+    def test_clustal_custom_width_dna(self):
+        """Test Clustal formatting with a custom width for DNA alignment."""
+        expected_output = (
+            "CLUSTAL W (1.83) multiple sequence alignment\n\n\n"
+            "seq1      ACGT\n"
+            "seq2      ACGT\n"
+            "          ****\n\n"
+            "seq1      ACGT\n"
+            "seq2      ACGT\n"
+            "          ****\n\n"
+            "seq1      ACGT\n"
+            "seq2      ACGA\n"
+            "          *** "
+        )
+        clustal_output = self.dna_alignment.clustal(width=4)
+        assert clustal_output == expected_output
+
+
+    def test_clustal_protein_conservation(self):
+        """Test Clustal conservation line for protein alignment with various conserved states."""
+        expected_output = (
+            "CLUSTAL W (1.83) multiple sequence alignment\n\n\n"
+            "seq3      MKVHHLNSAIA\n"
+            "seq4      MKVHFLEESIA\n"
+            "seq5      MKAYYLQQSIA\n"
+            "          **.:.*:.:**"
+        )
+        clustal_output = self.protein_alignment.clustal()
+        assert clustal_output == expected_output
+
+    def test_clustal_empty_alignment(self):
+        """Test Clustal formatting raises an error for empty alignment."""
+        empty_alignment = sq.Seq_alignment(name="empty_alignment")
+        with pytest.raises(sq.SeqError, match="No sequences in sequence set.  Can't create clustal"):
+            empty_alignment.clustal()
+
+    def test_clustal_width_negative_one(self):
+        """Test Clustal formatting with width=-1 to check handling of full alignment width."""
+        expected_output = (
+            "CLUSTAL W (1.83) multiple sequence alignment\n\n\n"
+            "seq1      ACGTACGTACGT\n"
+            "seq2      ACGTACGTACGA\n"
+            "          *********** "
+        )
+        clustal_output = self.dna_alignment.clustal(width=-1)
+        assert clustal_output == expected_output
+        
+###################################################################################################
+
+class Test_Seq_alignment_nexus:
+    """Test suite for the nexus method in Seq_alignment."""
+
+    def setup_method(self):
+        """Setup method to create base Seq_alignment objects for testing."""
+        self.seq1 = sq.DNA_sequence(name="seq1", seq="ACGTACGTACGT")
+        self.seq2 = sq.DNA_sequence(name="seq2", seq="ACGTACGTACGA")
+        self.seq3 = sq.Protein_sequence(name="seq1", seq="MKVIALVGAIA")
+        self.seq4 = sq.Protein_sequence(name="seq2", seq="MKVIALVGSIA")
+
+        self.dna_alignment = sq.Seq_alignment(name="dna_alignment")
+        self.dna_alignment.addseq(self.seq1)
+        self.dna_alignment.addseq(self.seq2)
+
+        self.protein_alignment = sq.Seq_alignment(name="protein_alignment", seqtype="protein")
+        self.protein_alignment.addseq(self.seq3)
+        self.protein_alignment.addseq(self.seq4)
+
+        # Set up partitioned alignment
+        self.partitioned_alignment = sq.Seq_alignment(name="partitioned_alignment")
+        self.partitioned_alignment.addseq(self.seq1)
+        self.partitioned_alignment.addseq(self.seq2)
+        # Adding partitions
+        self.partitioned_alignment.partitions = [("Partition 1", 0, 6, "DNA"), ("Partition 2", 6, 6, "DNA")]
+
+    def test_nexus_default_dna(self):
+        """Test NEXUS formatting with default width for DNA alignment."""
+        expected_output = (
+            "#NEXUS\n\n"
+            "begin data;\n"
+            "    dimensions ntax=2 nchar=12;\n"
+            "    format datatype=dna interleave=yes gap=-;\n\n"
+            "    matrix\n"
+            "    seq1      ACGTACGTACGT\n"
+            "    seq2      ACGTACGTACGA\n"
+            ";\nend;"
+        )
+        nexus_output = self.dna_alignment.nexus()
+        assert nexus_output == expected_output
+
+    def test_nexus_custom_width(self):
+        """Test NEXUS formatting with a custom width."""
+        expected_output = (
+            "#NEXUS\n\n"
+            "begin data;\n"
+            "    dimensions ntax=2 nchar=12;\n"
+            "    format datatype=dna interleave=yes gap=-;\n\n"
+            "    matrix\n"
+            "    seq1      ACGTACGT\n"
+            "    seq2      ACGTACGT\n"
+            "\n"
+            "    seq1      ACGT\n"
+            "    seq2      ACGA\n"
+            ";\nend;"
+        )
+        nexus_output = self.dna_alignment.nexus(width=8)
+        assert nexus_output == expected_output
+
+    def test_nexus_partitioned(self):
+        """Test NEXUS formatting with partitions."""
+        expected_output = (
+            "#NEXUS\n\n"
+            "begin data;\n"
+            "    dimensions ntax=2 nchar=12;\n"
+            "    format datatype=dna interleave=yes gap=-;\n\n"
+            "    matrix\n"
+            "\n    [Partition: Partition 1]\n"
+            "    seq1      ACGTAC\n"
+            "    seq2      ACGTAC\n"
+            "\n    [Partition: Partition 2]\n"
+            "    seq1      GTACGT\n"
+            "    seq2      GTACGA\n"
+            ";\nend;"
+        )
+        nexus_output = self.partitioned_alignment.nexus(print_partitioned=True)
+        assert nexus_output == expected_output
+
+    def test_nexus_empty_alignment(self):
+        """Test NEXUS formatting raises an error for empty alignment."""
+        empty_alignment = sq.Seq_alignment(name="empty_alignment")
+        with pytest.raises(sq.SeqError, match="No sequences in sequence set.  Can't create nexus"):
+            empty_alignment.nexus()
+
+    def test_nexus_mixed_alignment(self):
+        """Test NEXUS formatting with mixed alignment types."""
+        dna_alignment = sq.Seq_alignment(name="dna")
+        dna_alignment.addseq(self.seq1)
+        dna_alignment.addseq(self.seq2)
+        protein_alignment = sq.Seq_alignment(name="protein")
+        protein_alignment.addseq(self.seq3)
+        protein_alignment.addseq(self.seq4)
+        mixed_alignment = dna_alignment.appendalignment(protein_alignment)
+
+        expected_output = (
+            "#NEXUS\n\n"
+            "begin data;\n"
+            "    dimensions ntax=2 nchar=23;\n"
+            "    format datatype=mixed(DNA:1-12,protein:13-23) interleave=yes gap=-;\n\n"
+            "    matrix\n"
+            "    seq1      ACGTACGTACGTMKVIALVGAIA\n"
+            "    seq2      ACGTACGTACGAMKVIALVGSIA\n"
+            ";\nend;"
+        )
+        nexus_output = mixed_alignment.nexus()
+        assert nexus_output == expected_output
+
+    def test_nexus_mixed_alignment_partitioned(self):
+        """Test NEXUS formatting with mixed alignment types."""
+        dna_alignment = sq.Seq_alignment(name="dna")
+        dna_alignment.addseq(self.seq1)
+        dna_alignment.addseq(self.seq2)
+        protein_alignment = sq.Seq_alignment(name="protein")
+        protein_alignment.addseq(self.seq3)
+        protein_alignment.addseq(self.seq4)
+        mixed_alignment = dna_alignment.appendalignment(protein_alignment)
+
+        expected_output = (
+            "#NEXUS\n\n"
+            "begin data;\n"
+            "    dimensions ntax=2 nchar=23;\n"
+            "    format datatype=mixed(DNA:1-12,protein:13-23) interleave=yes gap=-;\n\n"
+            "    matrix\n"
+            "\n    [Partition: dna]\n"
+            "    seq1      ACGTACGTACGT\n"
+            "    seq2      ACGTACGTACGA\n"
+            "\n    [Partition: protein]\n"
+            "    seq1      MKVIALVGAIA\n"
+            "    seq2      MKVIALVGSIA\n"
+            ";\nend;"
+        )
+        
+        nexus_output = mixed_alignment.nexus(print_partitioned=True)
+        assert nexus_output == expected_output
+
 
 
