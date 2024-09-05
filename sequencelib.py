@@ -2548,7 +2548,7 @@ class Seq_alignment(Sequences_base):
         frontspace = max(lenlist) + 6
 
         # Header
-        clustal = ["CLUSTAL W (1.82) multiple sequence alignment\n\n\n"]
+        clustal = ["CLUSTAL W (1.83) multiple sequence alignment\n\n\n"]
 
         # Add blocks
         for i in range(numseqblocks):
