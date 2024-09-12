@@ -8,6 +8,7 @@ import itertools
 import math
 from collections import Counter
 from math import log
+from io import StringIO
 
 
 # Note: I could use fixtures to make the testing code much shorter (sharing a few instances
@@ -5594,5 +5595,737 @@ class Test_Seq_alignment_nexus:
         nexus_output = mixed_alignment.nexus(print_partitioned=True)
         assert nexus_output == expected_output
 
+################################################################################################### 
 
+# nexusgap: deprecated? 
 
+###################################################################################################
+
+class Test_Seq_alignment_charsetblock:
+    """Test suite for the charsetblock method in Seq_alignment."""
+
+    def setup_method(self):
+        """Setup method to create base Seq_alignment objects for testing."""
+        self.seq1 = sq.DNA_sequence(name="seq1", seq="ACGTACGTACGT")
+        self.seq2 = sq.DNA_sequence(name="seq2", seq="ACGTACGTACGA")
+
+        self.alignment = sq.Seq_alignment(name="alignment")
+        self.alignment.addseq(self.seq1)
+        self.alignment.addseq(self.seq2)
+
+    def test_charsetblock_single_partition(self):
+        """Test charsetblock output with a single partition."""
+        # Set up a single partition
+        self.alignment.partitions = [("Partition1", 0, 12, "DNA")]
+
+        expected_output = (
+            "begin mrbayes;\n"
+            "    [Charset commands:]\n"
+            "    charset Partition1 = 1-12;	[partition no. 1]\n"
+            "    partition allgenes = 1: Partition1;\n"
+            "    set partition = allgenes;\n"
+            "end;\n"
+        )
+        charset_output = self.alignment.charsetblock()
+        assert charset_output == expected_output
+
+    def test_charsetblock_multiple_partitions(self):
+        """Test charsetblock output with multiple partitions."""
+        # Set up multiple partitions
+        self.alignment.partitions = [
+            ("Partition1", 0, 4, "DNA"),
+            ("Partition2", 4, 4, "DNA"),
+            ("Partition3", 8, 4, "DNA")
+        ]
+
+        expected_output = (
+            "begin mrbayes;\n"
+            "    [Charset commands:]\n"
+            "    charset Partition1 = 1-4;	[partition no. 1]\n"
+            "    charset Partition2 = 5-8;	[partition no. 2]\n"
+            "    charset Partition3 = 9-12;	[partition no. 3]\n"
+            "    partition allgenes = 3: Partition1, Partition2, Partition3;\n"
+            "    set partition = allgenes;\n"
+            "end;\n"
+        )
+        charset_output = self.alignment.charsetblock()
+        assert charset_output == expected_output
+
+    def test_charsetblock_long_names(self):
+        """Test charsetblock output with partitions that have long names."""
+        # Set up partitions with long names
+        self.alignment.partitions = [
+            ("VeryLongPartitionName1", 0, 4, "DNA"),
+            ("VeryLongPartitionName2", 4, 4, "DNA"),
+        ]
+
+        expected_output = (
+            "begin mrbayes;\n"
+            "    [Charset commands:]\n"
+            "    charset VeryLongPartitionName1 = 1-4;	[partition no. 1]\n"
+            "    charset VeryLongPartitionName2 = 5-8;	[partition no. 2]\n"
+            "    partition allgenes = 2: VeryLongPartitionName1, VeryLongPartitionName2;\n"
+            "    set partition = allgenes;\n"
+            "end;\n"
+        )
+        charset_output = self.alignment.charsetblock()
+        assert charset_output == expected_output
+
+    def test_charsetblock_no_partitions(self):
+            """Test charsetblock output when there are no partitions."""
+            # Clear partitions
+            self.alignment.partitions = []
+
+            with pytest.raises(sq.SeqError, match="No data in alignment: can't create charsetblock"):
+                self.alignment.charsetblock()
+                
+###################################################################################################
+
+#  bestblock: TBD?
+
+###################################################################################################
+
+# nexuspart: TBD?
+
+###################################################################################################
+###################################################################################################
+
+# Tests for Fastafilehandle
+
+###################################################################################################
+###################################################################################################
+
+class Test_Fastafilehandle_init:
+    """Test suite for the __init__ method of the Fastafilehandle class."""
+
+    def setup_method(self):
+        """Setup method to create a virtual FASTA file for testing."""
+        self.fasta_data = """>seq1
+        ACGTACGTACGT
+        >seq2
+        TGCATGCATGCA
+        """
+        self.fasta_file = StringIO(self.fasta_data)
+
+    def test_init_valid_fasta(self):
+        """Test __init__ with a valid FASTA file."""
+        # Initialize Fastafilehandle with a valid FASTA file-like object
+        reader = sq.Fastafilehandle(self.fasta_file, nameishandle=True)
+        
+        # Check if the reader has been correctly initialized
+        assert reader.filename == "handle"
+        assert reader.seqtype == "autodetect"
+        assert reader.check_alphabet is False
+        assert reader.degap is False
+
+    def test_init_invalid_fasta(self):
+        """Test __init__ with an invalid FASTA file (missing '>' character)."""
+        invalid_fasta_data = """seq1
+        ACGTACGTACGT
+        """
+        invalid_fasta_file = StringIO(invalid_fasta_data)
+        
+        # Try initializing Fastafilehandle with an invalid FASTA file
+        with pytest.raises(sq.SeqError, match="does not appear to be in FASTA format"):
+            sq.Fastafilehandle(invalid_fasta_file, nameishandle=True)
+            
+###################################################################################################
+
+class Test_Fastafilehandle_next:
+    """Test suite for the __next__ method of the Fastafilehandle class."""
+
+    def test_next(self):
+        """Test __next__ method to iterate through sequences in a FASTA file."""
+
+        self.fasta_data = """>seq1
+        ACGTACGTACGT
+        >seq2
+        TGCATGCATGCA
+        """
+        self.fasta_file = StringIO(self.fasta_data)
+        reader = sq.Fastafilehandle(self.fasta_file, nameishandle=True)
+        
+        # Get the first sequence
+        seq1 = next(reader)
+        assert seq1.name == "seq1"
+        assert seq1.seq == "ACGTACGTACGT"
+
+        # Get the second sequence
+        seq2 = next(reader)
+        assert seq2.name == "seq2"
+        assert seq2.seq == "TGCATGCATGCA"
+
+        # Check that StopIteration is raised at the end
+        with pytest.raises(StopIteration):
+            next(reader)
+
+###################################################################################################
+
+class Test_Fastafilehandle_makeseq:
+    """Test suite for the makeseq method of the Fastafilehandle class."""
+
+    def setup_method(self):
+        """Setup method to initialize Fastafilehandle instance for testing."""
+        # Mock a FASTA formatted StringIO file handle. Content will never be used - only header
+        fasta_content = ">test_dna\nATCG\n"
+        fasta_handle = StringIO(fasta_content)
+        # Initialize Fastafilehandle with the StringIO handle
+        self.reader = sq.Fastafilehandle(filename=fasta_handle, seqtype="autodetect", check_alphabet=False, degap=False, nameishandle=True)
+
+    def test_makeseq_dna(self):
+        """Test makeseq with DNA sequence type."""
+        self.reader.seqtype = "DNA"
+        dna_seq = self.reader.makeseq(name="test_dna", seq="ATCG")
+        assert isinstance(dna_seq, sq.DNA_sequence)
+        assert dna_seq.name == "test_dna"
+        assert dna_seq.seq == "ATCG"
+
+    def test_makeseq_protein(self):
+        """Test makeseq with protein sequence type."""
+        self.reader.seqtype = "protein"
+        protein_seq = self.reader.makeseq(name="test_protein", seq="ACDEFGHIKLMNPQRSTVWY")
+        assert isinstance(protein_seq, sq.Protein_sequence)
+        assert protein_seq.name == "test_protein"
+        assert protein_seq.seq == "ACDEFGHIKLMNPQRSTVWY"
+
+    def test_makeseq_ascii(self):
+        """Test makeseq with ASCII sequence type."""
+        self.reader.seqtype = "ASCII"
+        ascii_seq = self.reader.makeseq(name="test_ascii", seq="ABCDEF")
+        assert isinstance(ascii_seq, sq.ASCII_sequence)
+        assert ascii_seq.name == "test_ascii"
+        assert ascii_seq.seq == "ABCDEF"
+
+    def test_makeseq_standard(self):
+        """Test makeseq with standard sequence type."""
+        self.reader.seqtype = "standard"
+        standard_seq = self.reader.makeseq(name="test_standard", seq="1234")
+        assert isinstance(standard_seq, sq.Standard_sequence)
+        assert standard_seq.name == "test_standard"
+        assert standard_seq.seq == "1234"
+
+    def test_makeseq_restriction(self):
+        """Test makeseq with restriction sequence type."""
+        self.reader.seqtype = "restriction"
+        restriction_seq = self.reader.makeseq(name="test_restriction", seq="0101")
+        assert isinstance(restriction_seq, sq.Restriction_sequence)
+        assert restriction_seq.name == "test_restriction"
+        assert restriction_seq.seq == "0101"
+
+    def test_makeseq_autodetect_dna(self):
+        """Test autodetection of DNA sequence type in makeseq."""
+        autodetected_seq = self.reader.makeseq(name="test_auto_dna", seq="ATCG")
+        assert isinstance(autodetected_seq, sq.DNA_sequence)
+        assert autodetected_seq.name == "test_auto_dna"
+        assert autodetected_seq.seq == "ATCG"
+
+    def test_makeseq_autodetect_protein(self):
+        """Test autodetection of protein sequence type in makeseq."""
+        autodetected_seq = self.reader.makeseq(name="test_auto_protein", seq="ACDEFGHIKLMNPQRSTVWY")
+        assert isinstance(autodetected_seq, sq.Protein_sequence)
+        assert autodetected_seq.name == "test_auto_protein"
+        assert autodetected_seq.seq == "ACDEFGHIKLMNPQRSTVWY"
+
+    def test_makeseq_unknown_seqtype(self):
+        """Test makeseq with an unknown sequence type, expecting an error."""
+        self.reader.seqtype = "unknown"
+        with pytest.raises(sq.SeqError, match="Unknown sequence type"):
+            self.reader.makeseq(name="test_unknown", seq="XYZ")
+            
+###################################################################################################
+
+class Test_Fastafilehandle_readseq:
+    """Test suite for the readseq method of the Fastafilehandle class."""
+
+    def setup_method(self):
+        """Setup method to initialize Fastafilehandle instance for testing."""
+        # Mock a FASTA formatted StringIO file handle with multiple sequences
+        fasta_content = """>test_seq1
+        ATCG
+        >test_seq2
+        GATTACA
+        >test_seq3
+        CGTAGCTAG
+        """
+        fasta_handle = StringIO(fasta_content)
+        # Initialize Fastafilehandle with the StringIO handle
+        self.reader = sq.Fastafilehandle(filename=fasta_handle, 
+                                         seqtype="autodetect", 
+                                         check_alphabet=False, 
+                                         degap=False, 
+                                         nameishandle=True)
+
+    def test_readseq_single(self):
+        """Test reading a single sequence from the file."""
+        seq = self.reader.readseq()
+        assert isinstance(seq, sq.DNA_sequence)
+        assert seq.name == "test_seq1"
+        assert seq.seq == "ATCG"
+
+    def test_readseq_multiple_calls(self):
+        """Test reading multiple sequences one by one."""
+        # Read first sequence
+        seq1 = self.reader.readseq()
+        assert isinstance(seq1, sq.DNA_sequence)
+        assert seq1.name == "test_seq1"
+        assert seq1.seq == "ATCG"
+
+        # Read second sequence
+        seq2 = self.reader.readseq()
+        assert isinstance(seq2, sq.DNA_sequence)
+        assert seq2.name == "test_seq2"
+        assert seq2.seq == "GATTACA"
+
+        # Read third sequence
+        seq3 = self.reader.readseq()
+        assert isinstance(seq3, sq.DNA_sequence)
+        assert seq3.name == "test_seq3"
+        assert seq3.seq == "CGTAGCTAG"
+
+    def test_readseq_eof(self):
+        """Test reading past the end of the file to trigger StopIteration."""
+        # Read all sequences
+        self.reader.readseq()  # test_seq1
+        self.reader.readseq()  # test_seq2
+        self.reader.readseq()  # test_seq3
+
+        # Attempt to read past the end of the file
+        with pytest.raises(StopIteration):
+            self.reader.readseq()
+            
+###################################################################################################
+
+class Test_Fastafilehandle_read_seqs:
+    """Test suite for the read_seqs method of the Fastafilehandle class."""
+
+    def setup_method(self):
+        """Setup method to initialize Fastafilehandle instance for testing."""
+        # Mock a FASTA formatted StringIO file handle with multiple sequences
+        fasta_content = """>test_seq1
+        ATCG
+        >test_seq2
+        GATTACA
+        >test_seq3
+        CGTAGCTAG
+        """
+        fasta_handle = StringIO(fasta_content)
+        # Initialize Fastafilehandle with the StringIO handle
+        self.reader = sq.Fastafilehandle(filename=fasta_handle, seqtype="autodetect", check_alphabet=False, degap=False, nameishandle=True)
+
+    def test_read_seqs_basic(self):
+        """Test reading all sequences and returning them as a Seq_set object."""
+        seqset = self.reader.read_seqs()
+
+        assert isinstance(seqset, sq.Seq_set)
+        assert len(seqset) == 3  # There should be 3 sequences
+
+        # Check individual sequences
+        assert seqset.getseq("test_seq1").seq == "ATCG"
+        assert seqset.getseq("test_seq2").seq == "GATTACA"
+        assert seqset.getseq("test_seq3").seq == "CGTAGCTAG"
+
+    def test_read_seqs_duplicate(self):
+        """Test reading sequences with duplicate names and discarding them."""
+        # Mock a FASTA formatted StringIO with duplicate sequence names
+        fasta_content_with_dup = """>test_seq1
+        ATCG
+        >test_seq2
+        GATTACA
+        >test_seq1
+        GGCCTTAA
+        """
+        fasta_handle = StringIO(fasta_content_with_dup)
+        self.reader = sq.Fastafilehandle(filename=fasta_handle, seqtype="autodetect", check_alphabet=False, degap=False, nameishandle=True)
+
+        # When silently_discard_dup_name=True, the duplicate should be discarded
+        seqset = self.reader.read_seqs(silently_discard_dup_name=True)
+        assert isinstance(seqset, sq.Seq_set)
+        assert len(seqset) == 2  # Only 2 sequences should be kept (test_seq1 and test_seq2)
+
+        # The first test_seq1 should be kept, and the duplicate discarded
+        assert seqset.getseq("test_seq1").seq == "ATCG"
+        assert seqset.getseq("test_seq2").seq == "GATTACA"
+
+    def test_read_seqs_error_on_duplicate(self):
+        """Test that reading sequences with duplicate names raises an error when silently_discard_dup_name=False."""
+        # Mock a FASTA formatted StringIO with duplicate sequence names
+        fasta_content_with_dup = """>test_seq1
+        ATCG
+        >test_seq2
+        GATTACA
+        >test_seq1
+        GGCCTTAA
+        """
+        fasta_handle = StringIO(fasta_content_with_dup)
+        self.reader = sq.Fastafilehandle(filename=fasta_handle, seqtype="autodetect", check_alphabet=False, degap=False, nameishandle=True)
+
+        # When silently_discard_dup_name=False, it should raise an error due to duplicate names
+        with pytest.raises(sq.SeqError):
+            self.reader.read_seqs(silently_discard_dup_name=False)
+            
+###################################################################################################
+
+class Test_Fastafilehandle_read_alignment:
+    """Test suite for the read_alignment method of the Fastafilehandle class."""
+
+    def setup_method(self):
+        """Setup method to initialize Fastafilehandle instance for testing."""
+        # Mock a FASTA formatted StringIO file handle with multiple sequences
+        fasta_content = """>test_seq1
+        ATCG
+        >test_seq2
+        GATT
+        >test_seq3
+        CGTA
+        """
+        fasta_handle = StringIO(fasta_content)
+        # Initialize Fastafilehandle with the StringIO handle
+        self.reader = sq.Fastafilehandle(filename=fasta_handle, seqtype="autodetect", check_alphabet=False, degap=False, nameishandle=True)
+
+    def test_read_alignment_basic(self):
+        """Test reading all sequences and returning them as a Seq_alignment object."""
+        alignment = self.reader.read_alignment()
+
+        assert isinstance(alignment, sq.Seq_alignment)
+        assert len(alignment) == 3  # There should be 3 sequences
+
+        # Check individual sequences
+        assert alignment.getseq("test_seq1").seq == "ATCG"
+        assert alignment.getseq("test_seq2").seq == "GATT"
+        assert alignment.getseq("test_seq3").seq == "CGTA"
+
+        # Ensure that the sequences are aligned (same length)
+        assert len(alignment[0]) == 4
+        assert len(alignment[1]) == 4
+        assert len(alignment[2]) == 4
+
+    def test_read_alignment_with_duplicate(self):
+        """Test reading sequences with duplicate names and discarding them."""
+        # Mock a FASTA formatted StringIO with duplicate sequence names
+        fasta_content_with_dup = """>test_seq1
+        ATCG
+        >test_seq2
+        GATT
+        >test_seq1
+        GGCC
+        """
+        fasta_handle = StringIO(fasta_content_with_dup)
+        self.reader = sq.Fastafilehandle(filename=fasta_handle, seqtype="autodetect", check_alphabet=False, degap=False, nameishandle=True)
+
+        # When silently_discard_dup_name=True, the duplicate should be discarded
+        alignment = self.reader.read_alignment(silently_discard_dup_name=True)
+        assert isinstance(alignment, sq.Seq_alignment)
+        assert len(alignment) == 2  # Only 2 sequences should be kept (test_seq1 and test_seq2)
+
+        # The first test_seq1 should be kept, and the duplicate discarded
+        assert alignment.getseq("test_seq1").seq == "ATCG"
+        assert alignment.getseq("test_seq2").seq == "GATT"
+
+    def test_read_alignment_error_on_duplicate(self):
+        """Test that reading sequences with duplicate names raises an error when silently_discard_dup_name=False."""
+        # Mock a FASTA formatted StringIO with duplicate sequence names
+        fasta_content_with_dup = """>test_seq1
+        ATCG
+        >test_seq2
+        GATT
+        >test_seq1
+        GGCC
+        """
+        fasta_handle = StringIO(fasta_content_with_dup)
+        self.reader = sq.Fastafilehandle(filename=fasta_handle, seqtype="autodetect", check_alphabet=False, degap=False, nameishandle=True)
+
+        # When silently_discard_dup_name=False, it should raise an error due to duplicate names
+        with pytest.raises(sq.SeqError):
+            self.reader.read_alignment(silently_discard_dup_name=False)
+
+    def test_read_alignment_invalid_length(self):
+        """Test that reading sequences with differing lengths raises an error."""
+        # Mock a FASTA formatted StringIO with sequences of different lengths
+        fasta_content_invalid = """>test_seq1
+        ATCG
+        >test_seq2
+        GATTACA
+        >test_seq3
+        CGT
+        """
+        fasta_handle = StringIO(fasta_content_invalid)
+        self.reader = sq.Fastafilehandle(filename=fasta_handle, seqtype="autodetect", check_alphabet=False, degap=False, nameishandle=True)
+
+        # Reading alignment with sequences of different lengths should raise an error
+        with pytest.raises(sq.SeqError):
+            self.reader.read_alignment(silently_discard_dup_name=True)
+            
+###################################################################################################
+
+class Test_Howfilehandle_init:
+    """Test suite for the __init__ method of the Howfilehandle class."""
+
+    def test_valid_howfile_init(self):
+        """Test initializing Howfilehandle with a valid HOW file."""
+        how_content = """    14 seq1
+        ATCGTGCAGCTCGG
+        ..............
+            14 seq2
+        CGTAGGCGTAACTG
+        IIIIIIIIIIIIII
+        """
+        how_handle = StringIO(how_content)
+        reader = sq.Howfilehandle(filename=how_handle, seqtype="autodetect", check_alphabet=False, degap=False, nameishandle=True)
+        assert reader.filename == "handle"
+        assert reader.seqtype == "autodetect"
+        assert not reader.check_alphabet
+
+    def test_invalid_howfile_init(self):
+        """Test initializing Howfilehandle with an invalid HOW file format."""
+        invalid_how_content = """Invalid HOW file content
+        ATCGTGCAGCTCGG
+        """
+        invalid_how_handle = StringIO(invalid_how_content)
+
+        # Attempting to initialize Howfilehandle with invalid content should raise an error
+        with pytest.raises(sq.SeqError, match="File 'handle' does not appear to be in HOW format"):
+            sq.Howfilehandle(filename=invalid_how_handle, seqtype="autodetect", check_alphabet=False, degap=False, nameishandle=True)
+            
+###################################################################################################
+
+class Test_Howfilehandle_next:
+    """Test suite for the __next__ method of the Howfilehandle class."""
+
+    def test_next_sequence(self):
+        """Test parsing the next sequence using the __next__ method."""
+        how_content = """    14 seq1
+ATCGTGCAGCTCGG
+..............
+    14 seq2
+CGTAGGCGTAACTG
+IIIIIIIIIIIIII
+"""
+        how_handle = StringIO(how_content)
+        reader = sq.Howfilehandle(filename=how_handle, seqtype="autodetect", check_alphabet=False, degap=False, nameishandle=True)
+
+        seq_obj = next(reader)
+        assert isinstance(seq_obj, sq.Sequence)
+        assert seq_obj.name == "seq1"
+        assert seq_obj.seq == "ATCGTGCAGCTCGG"
+        assert seq_obj.annotation == ".............."
+
+        # Check that the second sequence can be read as well
+        seq_obj = next(reader)
+        assert seq_obj.name == "seq2"
+        assert seq_obj.seq == "CGTAGGCGTAACTG"
+        assert seq_obj.annotation == "IIIIIIIIIIIIII"
+        
+
+    def test_next_stop_iteration(self):
+        """Test that StopIteration is raised after the last sequence."""
+        # Read all sequences
+        how_content = """    14 seq1
+ATCGTGCAGCTCGG
+..............
+    14 seq2
+CGTAGGCGTAACTG
+IIIIIIIIIIIIII
+"""
+        how_handle = StringIO(how_content)
+        reader = sq.Howfilehandle(filename=how_handle, seqtype="autodetect", check_alphabet=False, degap=False, nameishandle=True)
+        next(reader)
+        next(reader)
+
+        # The next call to __next__ should raise StopIteration
+        with pytest.raises(StopIteration):
+            next(reader)
+            
+###################################################################################################
+
+class Test_Genbankfilehandle_init:
+    """Test class for the Genbankfilehandle __init__ method."""
+    
+    def test_init_valid_genbank(self):
+        """Test that the file is read correctly when in valid GenBank format."""
+        # Path to the valid GenBank file with three entries
+        filename = "tests/threeseqs.gb"
+        
+        # Create an instance of Genbankfilehandle
+        reader = sq.Genbankfilehandle(filename=filename, seqtype="autodetect", check_alphabet=False, degap=False)
+        
+        # Check that the file was opened correctly and the first line was read
+        assert reader.line == "placeholder"  # Initial placeholder
+        assert reader.filename == filename
+        
+    def test_init_invalid_genbank_format(self):
+        """Test that an invalid GenBank format raises SeqError."""
+        # Invalid content for testing the format check
+        with pytest.raises(sq.SeqError):
+            invalid_content = "INVALID FORMAT CONTENT"
+            invalid_file = StringIO(invalid_content)
+            sq.Genbankfilehandle(filename=invalid_file, seqtype="autodetect", check_alphabet=False, degap=False, nameishandle=True)
+            
+###################################################################################################
+
+class Test_Genbankfilehandle_next:
+    """Test class for the Genbankfilehandle __next__ method."""
+
+    def setup_method(self):
+        """Setup method to initialize Genbankfilehandle instance for testing."""
+        
+    def test_valid_entries_namelocus(self):
+        """Test parsing 3 sequences using the __next__ method."""
+        filename = "tests/threeseqs.gb"
+        reader = sq.Genbankfilehandle(filename=filename)
+
+        # Retrieve the first sequence entry
+        seq_obj = next(reader)
+        
+        # Check reader attributes
+        assert reader.locusname == "KJ642619"
+        assert reader.seqlen == 196546
+        
+        # Check that a Sequence object is returned and has the expected attributes
+        assert isinstance(seq_obj, sq.DNA_sequence)
+        assert seq_obj.name == "KJ642619"  # Name from the LOCUS line in the first entry
+        assert len(seq_obj.seq) == 196546    
+        
+        # Retrieve the next two sequence entries and check content
+        seq_obj = next(reader)
+        assert reader.locusname == "KJ642618"
+        assert reader.seqlen == 194363
+        assert isinstance(seq_obj, sq.DNA_sequence)
+        assert seq_obj.name == "KJ642618"  # Name from the LOCUS line in the first entry
+        assert len(seq_obj.seq) == 194363    
+
+        seq_obj = next(reader)
+        assert reader.locusname == "KJ642617"
+        assert reader.seqlen == 197551
+        assert isinstance(seq_obj, sq.DNA_sequence)
+        assert seq_obj.name == "KJ642617"  # Name from the LOCUS line in the first entry
+        assert len(seq_obj.seq) == 197551    
+        
+    def test_valid_entries_namefromfields(self):
+        """Test parsing 3 sequences using the __next__ method."""
+        filename = "tests/threeseqs.gb"
+        reader = sq.Genbankfilehandle(filename=filename, namefromfields="ACCESSION,PUBMED,ORGANISM")
+
+        # Retrieve the first sequence entry
+        seq_obj = next(reader)
+        
+        # Check reader attributes
+        assert reader.locusname == "KJ642619"
+        assert reader.seqlen == 196546
+        
+        # Check that a Sequence object is returned and has the expected attributes
+        assert isinstance(seq_obj, sq.DNA_sequence)
+        assert seq_obj.name == "KJ642619_25912718_Monkeypox_virus"  # Name from the specified fields
+        assert len(seq_obj.seq) == 196546    
+        
+        # Retrieve the next two sequence entries and check content
+        seq_obj = next(reader)
+        assert isinstance(seq_obj, sq.DNA_sequence)
+        assert seq_obj.name == "KJ642618_25912718_Monkeypox_virus"  # Name from the specified fields
+        assert len(seq_obj.seq) == 194363    
+
+        seq_obj = next(reader)
+        assert isinstance(seq_obj, sq.DNA_sequence)
+        assert seq_obj.name == "KJ642617_25912718_Monkeypox_virus"  # Name from the specified fields
+        assert len(seq_obj.seq) == 197551    
+        
+    def test_next_protein(self):
+        genbank_content = """LOCUS       SCU49845     5028 bp    DNA             PLN       21-JUN-1999
+DEFINITION  Saccharomyces cerevisiae TCP1-beta gene, partial cds, and Axl2p
+ACCESSION   U49845
+VERSION     U49845.1  GI:1293613
+FEATURES             Location/Qualifiers
+ORIGIN
+        1 gatcctccat atacaacggt atctccacct caggtttaga tctcaacaac ggaaccattg
+//
+LOCUS       SCU49846     3500 bp    PRT             PLN       22-JUN-1999
+DEFINITION  Another entry for testing.
+ACCESSION   U49846
+VERSION     U49846.1  GI:1293614
+FEATURES             Location/Qualifiers
+ORIGIN
+        1 MKTAYIAKQR QISFVKSHFS RQLEERLGLI EVQANLKSYK DTEGYYTIGI GHLLTKSPSL
+//
+"""
+        # Simulate a file handle with StringIO
+        mock_file = StringIO(genbank_content)
+
+        # Initialize the Genbankfilehandle with the mock file handle
+        reader = sq.Genbankfilehandle(filename=mock_file, seqtype="autodetect", check_alphabet=False, degap=False, nameishandle=True)
+                
+        """Test finding the LOCUS line for a protein entry."""
+        # Skip to the next LOCUS line (protein entry)
+        seq_obj = next(reader)
+        seq_obj = next(reader)
+        assert reader.locusname == "SCU49846"
+        assert reader.seqlen == 3500
+        assert reader.seqtype == "protein"
+        assert isinstance(seq_obj, sq.Protein_sequence)
+        assert seq_obj.name == "SCU49846"
+        assert len(seq_obj) == 60 # Length in header is fake for mock testing, this is actual len     
+
+    def test_next_stop_iteration(self):
+        """Test that StopIteration is raised after reading all sequences."""
+        filename = "tests/threeseqs.gb"
+        reader = sq.Genbankfilehandle(filename=filename, seqtype="autodetect", check_alphabet=False, degap=False)
+
+        # Read all three sequences
+        next(reader)
+        next(reader)
+        next(reader)
+        
+        # The next call to __next__ should raise StopIteration
+        with pytest.raises(StopIteration):
+            next(reader)
+            
+###################################################################################################
+
+class Test_Tabfilehandle_init:
+    
+    def setup_method(self):
+        """Setup method to initialize Tabfilehandle instance for testing."""
+        # Simulating a file-like object with StringIO containing valid TAB formatted content
+        self.valid_tab_content = StringIO("seq1\tATCG\nseq2\tGGTA\n")
+        self.invalid_tab_content = StringIO("seq1 ATCG\nseq2 GGTA\n")  # Invalid due to missing tabs
+
+    def test_init_valid_tab_file(self):
+        """Test initializing Tabfilehandle with valid TAB content."""
+        # This should not raise an exception
+        reader = sq.Tabfilehandle(self.valid_tab_content, seqtype="DNA", nameishandle=True)
+        assert reader.seqfile == self.valid_tab_content
+
+    def test_init_invalid_tab_file(self):
+        """Test initializing Tabfilehandle with invalid TAB content."""
+        # This should raise a SeqError due to incorrect format
+        with pytest.raises(sq.SeqError, match="does not appear to be in TAB format"):
+            sq.Tabfilehandle(self.invalid_tab_content, seqtype="DNA", nameishandle=True)
+            
+###################################################################################################
+
+class Test_Tabfilehandle_readseq:
+
+    def setup_method(self):
+        """Setup method to initialize Tabfilehandle instance for testing."""
+        # Simulating a file-like object with StringIO containing valid TAB formatted content
+        self.valid_tab_content = StringIO("seq1\tATCG\nseq2\tGGTA\n")
+        self.invalid_tab_content = StringIO("seq1 ATCG\nseq2 GGTA\n")  # Invalid due to missing tabs
+
+    def test_readseq_valid(self):
+        """Test reading a single sequence from a valid TAB file."""
+        reader = sq.Tabfilehandle(self.valid_tab_content, seqtype="DNA", nameishandle=True)
+        seq = reader.readseq()  # Calls the inherited readseq method
+        assert isinstance(seq, sq.DNA_sequence)
+        assert seq.name == "seq1"
+        assert seq.seq == "ATCG"
+
+    def test_readseq_eof(self):
+        """Test reading when EOF is reached."""
+        reader = sq.Tabfilehandle(self.valid_tab_content, seqtype="DNA", nameishandle=True)
+        reader.readseq()  # Read the first sequence
+        reader.readseq()  # Read the second sequence
+        with pytest.raises(StopIteration):
+            reader.readseq()  # Should raise StopIteration after reading both sequences
+
+###################################################################################################
+
+            
+    
