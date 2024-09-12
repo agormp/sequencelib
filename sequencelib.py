@@ -3325,6 +3325,11 @@ class Howfilehandle(Seqfile_reader):
         Seqfile_reader.__init__(self, filename, seqtype, check_alphabet, degap, nameishandle)
 
         # Perform minimal "magic number" check of whether file appears to be in HOW format
+        # NOTE: very strong assumptions about format: 
+        # Name line: alignment length is first word, blankpadded from left, 6 spaces
+        #            seq name is second word with at least one blank between length and name
+        # Seqline and annot lines: assumed to start in first column.
+        # Last line assumed to be a single newline (no spaces)
         line = self.seqfile.readline()
         words = line.split()
         # Note: testing for line[6]!=" " could fail for seqlen>=1E6 (but perhaps not problem)
