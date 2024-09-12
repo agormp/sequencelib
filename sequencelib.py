@@ -3554,8 +3554,6 @@ class Tabfilehandle(Seqfile_reader):
     def __next__(self):
         """Parser function, returns next seq as Sequence object"""
 
-        # Note: This function is required in combination with baseclass __iter__() for iteration
-
         # If next line is empty, then EOF has been reached, and iteration should stop
         line = self.seqfile.readline()
         if len(line)==0:
