@@ -2701,6 +2701,8 @@ class Seq_alignment(Sequences_base):
         """Returns MrBayes block with charset commands for partitioned analysis as string"""
 
         numpartitions = len(self.partitions)
+        if numpartitions == 0:
+            raise SeqError("No data in alignment: can't create charsetblock")
 
         # Find longest name and longest number to enable properly aligned output
         namewidth = 0
