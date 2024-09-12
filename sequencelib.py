@@ -3439,7 +3439,7 @@ class Genbankfilehandle(Seqfile_reader):
         del metadata #probably not worth it to save memory, even if full genome...
 
         # Read sequence
-        seq = self.read_seq()
+        seq = self.read_genbankseq()
 
         # Use method in baseclass to determine seqtype and construct proper sequence object
         seqobject = Seqfile_reader.makeseq(self, seqname, seq, annotation, comments)
@@ -3514,7 +3514,7 @@ class Genbankfilehandle(Seqfile_reader):
 
     #######################################################################################
 
-    def read_seq(self):
+    def read_genbankseq(self):
         # File pointer is currently at ORIGIN: sequence starts on next line
         seqlist = []
         line = self.seqfile.readline()
