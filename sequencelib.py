@@ -3476,6 +3476,8 @@ class Genbankfilehandle(Seqfile_reader):
         metadatalist = []
         while not self.line.startswith("ORIGIN"):
             self.line = self.seqfile.readline()
+            if len(self.line) == 0:  # Reached end of file before finding ORIGIN
+                raise SeqError("File ended before finding 'ORIGIN' section")
             metadatalist.append(self.line)
         return metadatalist
 
