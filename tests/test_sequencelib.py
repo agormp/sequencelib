@@ -5230,42 +5230,52 @@ class Test_Seq_alignment_sequence_diversity:
 class Test_Seq_alignment_overlap:
     """Test suite for the overlap method in Seq_alignment."""
 
-    def test_overlap_no_gaps(self):
+    def test_overlap_identical_alignments(self):
         """Test overlap calculation with no gaps."""
         seq1 = sq.DNA_sequence(name="seq1", seq="ACGT")
         seq2 = sq.DNA_sequence(name="seq2", seq="AGTT")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TGTT")        
         alignment1 = sq.Seq_alignment(name="alignment1")
         alignment1.addseq(seq1)
         alignment1.addseq(seq2)
+        alignment1.addseq(seq3)
 
-        seq3 = sq.DNA_sequence(name="seq1", seq="ACGT")
-        seq4 = sq.DNA_sequence(name="seq2", seq="AGTT")
+        seq4 = sq.DNA_sequence(name="seq1", seq="ACGT")
+        seq5 = sq.DNA_sequence(name="seq2", seq="AGTT")
+        seq6 = sq.DNA_sequence(name="seq3", seq="TGTT")
+        
         alignment2 = sq.Seq_alignment(name="alignment2")
-        alignment2.addseq(seq3)
         alignment2.addseq(seq4)
+        alignment2.addseq(seq5)
+        alignment2.addseq(seq6)
 
         overlap_fraction = alignment1.overlap(alignment2)
 
         assert overlap_fraction == pytest.approx(1.0, rel=1e-5)  # Expect full overlap
 
-    def test_overlap_with_gaps(self):
+    def test_overlap_different_alignments(self):
         """Test overlap calculation with single gap."""
-        seq1 = sq.DNA_sequence(name="seq1", seq="AAAAT")
-        seq2 = sq.DNA_sequence(name="seq2", seq="AA-AC")
+        seq1 = sq.DNA_sequence(name="seq1", seq="ACGT")
+        seq2 = sq.DNA_sequence(name="seq2", seq="AGTT")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TGTT")        
         alignment1 = sq.Seq_alignment(name="alignment1")
         alignment1.addseq(seq1)
         alignment1.addseq(seq2)
+        alignment1.addseq(seq3)
 
-        seq3 = sq.DNA_sequence(name="seq1", seq="AAAAT")
-        seq4 = sq.DNA_sequence(name="seq2", seq="A-AAC")
+        seq4 = sq.DNA_sequence(name="seq1", seq="AC-GT")
+        seq5 = sq.DNA_sequence(name="seq2", seq="AGT-T")
+        seq6 = sq.DNA_sequence(name="seq3", seq="TGT-T")
+        
         alignment2 = sq.Seq_alignment(name="alignment2")
-        alignment2.addseq(seq3)
         alignment2.addseq(seq4)
+        alignment2.addseq(seq5)
+        alignment2.addseq(seq6)
 
         overlap_fraction = alignment1.overlap(alignment2)
 
-        # 2/4 alignment columns agree
-        assert overlap_fraction == pytest.approx(0.6, rel=1e-5)
+        # 10/15 paired residues agree
+        assert overlap_fraction == pytest.approx(10/12, rel=1e-5)
 
     def test_overlap_no_overlap(self):
         """Test overlap when there is no alignment overlap."""
@@ -5304,22 +5314,26 @@ class Test_Seq_alignment_overlap:
 
     def test_overlap_multiple_gaps(self):
         """Test overlap when alignments contain all gaps."""
-        seq1 = sq.DNA_sequence(name="seq1", seq="---A")
-        seq2 = sq.DNA_sequence(name="seq2", seq="---T")
+        seq1 = sq.DNA_sequence(name="seq1", seq="AA--")
+        seq2 = sq.DNA_sequence(name="seq2", seq="TT--")
+        seq3 = sq.DNA_sequence(name="seq3", seq="TTGG")        
         alignment1 = sq.Seq_alignment(name="alignment1")
         alignment1.addseq(seq1)
         alignment1.addseq(seq2)
+        alignment1.addseq(seq3)
 
-        seq3 = sq.DNA_sequence(name="seq1", seq="--A-")
-        seq4 = sq.DNA_sequence(name="seq2", seq="--T-")
+        seq4 = sq.DNA_sequence(name="seq1", seq="AA----")
+        seq5 = sq.DNA_sequence(name="seq2", seq="--TT--")
+        seq6 = sq.DNA_sequence(name="seq3", seq="--TTGG")        
         alignment2 = sq.Seq_alignment(name="alignment2")
-        alignment2.addseq(seq3)
         alignment2.addseq(seq4)
+        alignment2.addseq(seq5)
+        alignment2.addseq(seq6)
 
         overlap_fraction = alignment1.overlap(alignment2)
 
-        # Expect overlap to be 0.5 as gaps are treated as residues when discardgaps is False
-        assert overlap_fraction == pytest.approx(0.5, rel=1e-5)
+        # Expect overlap to be 8/12
+        assert overlap_fraction == pytest.approx(8/12, rel=1e-5)
 
 ###################################################################################################
 
@@ -6327,5 +6341,84 @@ class Test_Tabfilehandle_readseq:
 
 ###################################################################################################
 
+class Test_Rawfilehandle_init:
+
+    def setup_method(self):
+        """Setup method to initialize Rawfilehandle instance for testing."""
+        # Simulating a file-like object with StringIO containing raw sequences
+        self.raw_content = StringIO("ATCG\nGGTA\nTTAGGC\n")
+
+    def test_init_valid(self):
+        """Test initialization of Rawfilehandle with valid input."""
+        # Testing with StringIO as a file handle
+        reader = sq.Rawfilehandle(self.raw_content, seqtype="DNA", nameishandle=True)
+        assert reader.seqtype == "DNA"
+        assert reader.cur_seq_no == 1  # Check if sequence counter is initialized properly
+
+    def test_init_invalid(self):
+        """Test initialization of Rawfilehandle with invalid input (non-existing file)."""
+        with pytest.raises(FileNotFoundError):
+            sq.Rawfilehandle("non_existing_file.txt", seqtype="DNA")
             
+###################################################################################################
+###################################################################################################
+
+# Alignfile_reader derived classes
+
+###################################################################################################
+
+class Test_Clustalfilehandle_init:
+
+    def setup_method(self):
+        """Setup method to initialize Clustalfilehandle instance for testing."""
+        # Simulating valid and invalid Clustal file contents using StringIO
+        self.valid_clustal_content = StringIO("CLUSTAL W (1.82) multiple sequence alignment\n\nseq1   ATCG\nseq2   GGTA\n")
+        self.invalid_clustal_content = StringIO("Invalid header\n\nseq1   ATCG\nseq2   GGTA\n")
+
+    def test_init_valid(self):
+        """Test initialization with a valid Clustal file."""
+        reader = sq.Clustalfilehandle(self.valid_clustal_content, seqtype="DNA", nameishandle=True)
+        assert reader.seqtype == "DNA"
+        assert isinstance(reader.seqdata, list)
+        assert reader.seqdata[0].startswith("CLUSTAL")
+
+    def test_init_invalid(self):
+        """Test initialization with an invalid Clustal file format."""
+        with pytest.raises(sq.SeqError, match="does not appear to be in Clustal format"):
+            sq.Clustalfilehandle(self.invalid_clustal_content, seqtype="DNA", nameishandle=True)
     
+###################################################################################################
+
+class Test_Clustalfilehandle_read_alignment:
+
+    def setup_method(self):
+        """Setup method to initialize Clustalfilehandle instance for testing."""
+        # Simulating a valid Clustal file with two sequences
+        self.valid_clustal_content = StringIO("CLUSTAL W (1.82) multiple sequence alignment\n\nseq1   ATCG\nseq2   ATTA\n       **  ")
+
+    def test_read_alignment(self):
+        """Test reading alignment from a valid Clustal file."""
+        reader = sq.Clustalfilehandle(self.valid_clustal_content, nameishandle=True)
+        alignment = reader.read_alignment()
+        assert isinstance(alignment, sq.Seq_alignment)
+        assert len(alignment) == 2  # Check that 2 sequences were added
+        assert alignment.getseq("seq1").seq == "ATCG"
+        assert alignment.getseq("seq2").seq == "ATTA"
+        
+###################################################################################################
+
+class Test_Clustalfilehandle_readseqs:
+
+    def setup_method(self):
+        """Setup method to initialize Clustalfilehandle instance for testing."""
+        # Simulating a valid Clustal file with two sequences
+        self.valid_clustal_content = StringIO("CLUSTAL W (1.82) multiple sequence alignment\n\nseq1   ATCG\nseq2   GGTA\n")
+
+    def test_readseqs(self):
+        """Test reading sequences from a valid Clustal file."""
+        reader = sq.Clustalfilehandle(self.valid_clustal_content, nameishandle=True)
+        seqset = reader.read_seqs()
+        assert isinstance(seqset, sq.Seq_set)
+        assert len(seqset) == 2  # Check that 2 sequences were added
+        assert seqset.getseq("seq1").seq == "ATCG"
+        assert seqset.getseq("seq2").seq == "GGTA"
