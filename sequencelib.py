@@ -2409,7 +2409,9 @@ class Seq_alignment(Sequences_base):
             raise SeqError("Alignments do not contain same sequences - not possible to compute overlap")
         numseqs = len(self)
         numpairs = ((numseqs * (numseqs - 1)) / 2)
-        alignlen = self.alignlen()
+        alignlen1 = self.alignlen()
+        alignlen2 = other.alignlen()
+        shortest_alignlen = min(alignlen1, alignlen2)
 
         # Convert each sequence in each alignment to indexformat
         align1dict = {}
@@ -2420,15 +2422,28 @@ class Seq_alignment(Sequences_base):
             align2dict[seq.name] = seq2index(seq.seq)
 
         # For each pair of sequences in each alignment:
-        # construct list of tuples representation of mapping, compute overlap by set arithmetic
+        ident = 0
         for s1, s2 in itertools.combinations(self, 2):
-                mapping1 = zip(align1dict[s1.name], align1dict[s2.name])
-                mapping2 = zip(align2dict[s1.name], align2dict[s2.name])
-                ident = 0
-                for tup1, tup2 in zip(mapping1, mapping2): 
-                    if tup1 == tup2:
-                        ident += 1
-        overlapfrac = ident / (numpairs * alignlen)
+
+                # construct set of tuples representation of mapping
+                mapping1 = set(zip(align1dict[s1.name], align1dict[s2.name]))
+                mapping2 = set(zip(align2dict[s1.name], align2dict[s2.name]))
+                
+                # Count number of identical tuples using set arithmetic
+                ident += len(mapping1 & mapping2)
+                
+                # Compute the number of uncounted (-,-) tuples in each mapping
+                n_gapgap1 = alignlen1 - len(mapping1)
+                n_gapgap2 = alignlen2 - len(mapping2)
+                
+                # Add matching (-,-) tuples to ident
+                # Python note: strictly speaking i dont know if these occurred in the "same position"
+                # but that is hard to define for different length alignments any way, so will count all
+                ident += min(n_gapgap1, n_gapgap2)
+                
+        # Compute fraction of identically paired residues
+        # Note: use shortest alignment in denominator (otherwise overlap could never reach 1)
+        overlapfrac = ident / (numpairs * alignlen1)
 
         return overlapfrac
 
