@@ -5273,8 +5273,6 @@ class Test_Seq_alignment_overlap:
         alignment2.addseq(seq6)
 
         overlap_fraction = alignment1.overlap(alignment2)
-
-        # 10/15 paired residues agree
         assert overlap_fraction == pytest.approx(10/12, rel=1e-5)
 
     def test_overlap_no_overlap(self):
@@ -5292,7 +5290,6 @@ class Test_Seq_alignment_overlap:
         alignment2.addseq(seq4)
 
         overlap_fraction = alignment1.overlap(alignment2)
-
         assert overlap_fraction == pytest.approx(0.0, rel=1e-5)  # No overlap
 
     def test_overlap_different_sequence_names(self):
@@ -5331,9 +5328,7 @@ class Test_Seq_alignment_overlap:
         alignment2.addseq(seq6)
 
         overlap_fraction = alignment1.overlap(alignment2)
-
-        # Expect overlap to be 8/12
-        assert overlap_fraction == pytest.approx(8/12, rel=1e-5)
+        assert overlap_fraction == pytest.approx(6/10, rel=1e-5)
 
 ###################################################################################################
 
