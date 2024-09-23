@@ -3751,6 +3751,7 @@ class Clustalfilehandle(Alignfile_reader):
             lineno += 1
 
         # Iterate over remaining lines, adding sequences to dictionary as we go
+        # Python note: i should perhaps check sanity in various ways here... 
         seqdict = {}
         for i in range(lineno,len(self.seqdata)):
             line = self.seqdata[i]
