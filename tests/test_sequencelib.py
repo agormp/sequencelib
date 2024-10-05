@@ -1,5 +1,6 @@
 import pytest
 import sequencelib as sq
+import pandas as pd
 import random
 import re
 import numpy as np
@@ -5224,6 +5225,68 @@ class Test_Seq_alignment_sequence_diversity:
         # Expect an error when trying to compute diversity with no sequences
         with pytest.raises(sq.SeqError, match="Can't compute diversity for alignment with less than 2 sequences"):
           empty_alignment.sequence_diversity()
+
+###################################################################################################
+
+class Test_Seq_alignment_pairwise_sequence_distances:
+
+    def setup_method(self):
+        """Setup method to initialize Seq_alignment instance for testing."""
+        # Create an alignment with three sequences
+        self.alignment = sq.Seq_alignment("test_alignment")
+
+        # Adding sequences to the alignment
+        seq1 = sq.DNA_sequence("seq1", "ACGCCTCGCTAC--CGCTCA---AACGCT")
+        seq2 = sq.DNA_sequence("seq2", "CACAGTACGTGCTAGA---CT-GACTGAT")
+        seq3 = sq.DNA_sequence("seq3", "AC----GCGA-----CTCGACTCAGCTAC")
+        
+        self.alignment.addseq(seq1)
+        self.alignment.addseq(seq2)
+        self.alignment.addseq(seq3)
+
+    def test_pairwise_sequence_distances(self):
+        """Test pairwise sequence distances without ignoring gaps."""
+        df = self.alignment.pairwise_sequence_distances(ignoregaps=False)
+        
+        # Check that a DataFrame is returned
+        assert isinstance(df, pd.DataFrame)
+
+        # Check the correct number of pairs (3 sequences -> 3 pairs)
+        assert len(df) == 3
+        
+        # Expected distances: (seq1, seq2), (seq1, seq3), (seq2, seq3)
+        expected_distances = {
+            ('seq1', 'seq2'): sq.DNA_sequence.pdist(self.alignment.getseq('seq1'), self.alignment.getseq('seq2')),
+            ('seq1', 'seq3'): sq.DNA_sequence.pdist(self.alignment.getseq('seq1'), self.alignment.getseq('seq3')),
+            ('seq2', 'seq3'): sq.DNA_sequence.pdist(self.alignment.getseq('seq2'), self.alignment.getseq('seq3')),
+        }
+
+        for index, row in df.iterrows():
+            pair = (row['Seq1'], row['Seq2'])
+            assert pair in expected_distances
+            assert row['Distance'] == pytest.approx(expected_distances[pair])
+
+    def test_pairwise_sequence_distances_ignore_gaps(self):
+        """Test pairwise sequence distances with gaps ignored."""
+        df = self.alignment.pairwise_sequence_distances(ignoregaps=True)
+        
+        # Check that a DataFrame is returned
+        assert isinstance(df, pd.DataFrame)
+
+        # Check the correct number of pairs (3 sequences -> 3 pairs)
+        assert len(df) == 3
+        
+        # Expected distances with gaps ignored
+        expected_distances = {
+            ('seq1', 'seq2'): sq.DNA_sequence.pdist_ignoregaps(self.alignment.getseq('seq1'), self.alignment.getseq('seq2')),
+            ('seq1', 'seq3'): sq.DNA_sequence.pdist_ignoregaps(self.alignment.getseq('seq1'), self.alignment.getseq('seq3')),
+            ('seq2', 'seq3'): sq.DNA_sequence.pdist_ignoregaps(self.alignment.getseq('seq2'), self.alignment.getseq('seq3')),
+        }
+
+        for index, row in df.iterrows():
+            pair = (row['Seq1'], row['Seq2'])
+            assert pair in expected_distances
+            assert row['Distance'] == pytest.approx(expected_distances[pair])
 
 ###################################################################################################
 
