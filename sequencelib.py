@@ -23,6 +23,7 @@ from io import StringIO
 import copy
 import os
 import numpy as np
+import pandas as pd
 import Levenshtein as lv
 
 ##############################################################################################################
@@ -2326,7 +2327,7 @@ class Seq_alignment(Sequences_base):
 
     def sequence_diversity(self, ignoregaps=False):
         """
-        Compute pairwise sequence diversity (pi).
+        Compute pairwise sequence diversity (known as pi for nucleotide sequences).
         Return mean, and standard deviation, as tuple: (mean, std)
         Discard pairwise gappy positions if requested.
         """
@@ -2367,6 +2368,30 @@ class Seq_alignment(Sequences_base):
         std = sqrt(variance)
         return (mean_cur, std, minpi, maxpi)
 
+    #######################################################################################
+
+    def pairwise_sequence_distances(self, ignoregaps=False):
+        """
+        Compute all pairwise sequence distances.
+        Return a DataFrame with columns: 'Seq1', 'Seq2', 'Distance'
+        """
+        if ignoregaps:
+            distmethod = Sequence.pdist_ignoregaps
+        else:
+            distmethod = Sequence.pdist
+    
+        pairwise_dists = []
+    
+        for s1, s2 in itertools.combinations(self, 2):
+            dist = distmethod(s1, s2)
+            pairwise_dists.append((s1.name, s2.name, dist))
+    
+        # Create a DataFrame with the pairwise distances
+        df = pd.DataFrame(pairwise_dists, columns=['seq1', 'seq2', 'distance'])
+        df_sorted = df.sort_values(by=['seq1', 'seq2'])
+        
+        return df_sorted
+    
     #######################################################################################
 
     def overlap(self, other):
