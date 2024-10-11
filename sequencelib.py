@@ -88,10 +88,10 @@ def _multi_indices(mystring, substrings):
     Result is returned as set of indices"""
     
     all_indices = set()
-    for symbol in symbolset:
-        if not isinstance(symbol, str):
-            raise SeqError(f"Symbol is not a string as required: {symbol}")
-        all_indices |= _indices(mystring, symbol)
+    for c in substrings:
+        if not isinstance(c, str):
+            raise SeqError(f"Symbol is not a string as required: {c}")
+        all_indices |= _indices(mystring, c)
     return all_indices
 
 ##############################################################################################################
