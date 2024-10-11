@@ -544,9 +544,10 @@ class Sequence(object):
         diffs = self.hamming(other)
         gap_indices_self = _indices(self.seq, "-")
         gap_indices_other = _indices(other.seq, "-")
-        n_dont_count = len(gap_indices_self ^ gap_indices_other)
+        n_dont_count = len(gap_indices_self ^ gap_indices_other)  # Dont count diff where ONE is gap
+        n_gap_pos = len(gap_indices_self | gap_indices_other)
 
-        return (diffs - n_dont_count) / ( len(self.seq) - n_dont_count)
+        return (diffs - n_dont_count) / ( len(self.seq) - n_gap_pos)
 
     #######################################################################################
 
@@ -560,8 +561,9 @@ class Sequence(object):
         char_indices_self = _multi_indices(self.seq, igchars)
         char_indices_other = _multi_indices(other.seq, igchars)
         n_dont_count = len(char_indices_self ^ char_indices_other)
+        n_char_pos = len(char_indices_self | char_indices_other)
 
-        return (diffs - n_dont_count) / ( len(self.seq) - n_dont_count)
+        return (diffs - n_dont_count) / ( len(self.seq) - n_char_pos)
 
     #######################################################################################
 
