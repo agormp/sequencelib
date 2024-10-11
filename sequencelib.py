@@ -520,8 +520,8 @@ class Sequence(object):
         # Note: using this to build distance matrix will mean that for different pairs of sequences
         # a different set of alignment positions are included in the distance measure
         diffs = self.hamming(other)
-        gap_indices_self = indices(self.seq, "-")
-        gap_indices_other = indices(other.seq, "-")
+        gap_indices_self = _indices(self.seq, "-")
+        gap_indices_other = _indices(other.seq, "-")
         n_dont_count = len(gap_indices_self ^ gap_indices_other)
 
         return diffs - n_dont_count
