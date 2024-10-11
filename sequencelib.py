@@ -2354,11 +2354,11 @@ class Seq_alignment(Sequences_base):
 
     #######################################################################################
 
-    def sequence_diversity(self, ignoregaps=False):
+    def sequence_diversity(self, ignoregaps=False, ignoreambig=False):
         """
         Compute pairwise sequence diversity (known as pi for nucleotide sequences).
         Return mean, and standard deviation, as tuple: (mean, std)
-        Discard pairwise gappy positions if requested.
+        Discard pairwise gappy and/or ambiguous positions if requested.
         """
         
         # Note: std should perhaps be computed according to Nei, Molecular Evolutionary Genetics, equation 10.7?
@@ -2370,7 +2370,13 @@ class Seq_alignment(Sequences_base):
         if nseqs < 2:
             raise SeqError("Can't compute diversity for alignment with less than 2 sequences")
 
+        ignorechars = set()
         if ignoregaps:
+            ignorechars |= set("-")
+        if ignoreambig:
+            ignorechars |= self.ambigsymbols
+            
+            
             distmethod = Sequence.pdist_ignoregaps
         else:
             distmethod = Sequence.pdist
@@ -2381,7 +2387,10 @@ class Seq_alignment(Sequences_base):
         maxpi = -math.inf
         for s1, s2 in itertools.combinations(self, 2):
             num_vals += 1.0
-            dist = distmethod(s1, s2)
+            if ignorechars:
+                dist = s1.pdist_ignorechars(s2, ignorechars)
+            else:
+                dist = s1.pdist(s2)
             if dist < minpi:
                 minpi = dist
             if dist > maxpi:
