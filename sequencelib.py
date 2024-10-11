@@ -82,6 +82,20 @@ def _indices(mystring, substring):
 
 ##############################################################################################################
 
+def _multi_indices(mystring, substrings):
+    """Helper function: finds indices of all occurences of substrings in mystring
+    substrings: iterable with multiple strings.
+    Result is returned as set of indices"""
+    
+    all_indices = set()
+    for symbol in symbolset:
+        if not isinstance(symbol, str):
+            raise SeqError(f"Symbol is not a string as required: {symbol}")
+        all_indices |= _indices(mystring, symbol)
+    return all_indices
+
+##############################################################################################################
+
 def remove_comments(text, leftdelim, rightdelim):
     """Takes input string and strips away commented text, delimited by 'leftdelim' and 'rightdelim'.
         Also deals with nested comments."""
