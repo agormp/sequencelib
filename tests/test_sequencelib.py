@@ -5262,9 +5262,9 @@ class Test_Seq_alignment_pairwise_sequence_distances:
         }
 
         for index, row in df.iterrows():
-            pair = (row['Seq1'], row['Seq2'])
+            pair = (row['seq1'], row['seq2'])
             assert pair in expected_distances
-            assert row['Distance'] == pytest.approx(expected_distances[pair])
+            assert row['distance'] == pytest.approx(expected_distances[pair])
 
     def test_pairwise_sequence_distances_ignore_gaps(self):
         """Test pairwise sequence distances with gaps ignored."""
@@ -5284,9 +5284,9 @@ class Test_Seq_alignment_pairwise_sequence_distances:
         }
 
         for index, row in df.iterrows():
-            pair = (row['Seq1'], row['Seq2'])
+            pair = (row['seq1'], row['seq2'])
             assert pair in expected_distances
-            assert row['Distance'] == pytest.approx(expected_distances[pair])
+            assert row['distance'] == pytest.approx(expected_distances[pair])
 
 ###################################################################################################
 
