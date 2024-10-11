@@ -617,7 +617,7 @@ class Test_pdist_DNA:
         for i in range(10):
             seq = "".join(random.choices("ACG-", k=self.seqlen)) # Note: No T letters
             dnaseq1 = sq.DNA_sequence("s1", seq)
-            dnaseq2 = dnaseq1.copy_seqobject()
+            dnaseq2 = sq.DNA_sequence("s2", seq)
             nmut = random.randint(1,self.seqlen)
             mutpos = random.sample(range(len(seq)), k=nmut)     # No replacement
             for j in mutpos:
@@ -631,21 +631,49 @@ class Test_pdist_DNA:
 class Test_pdist_ignoregaps_DNA:
 
     seqlen = 150
+    
+    def test_simpleseqs(self):
+        s1 = sq.DNA_sequence(name="s1", seq="AC--T")
+        s2 = sq.DNA_sequence(name="s2", seq="ACG-A")
+        assert s1.pdist_ignoregaps(s2) == 1/3
 
     def test_10_random_pairs(self):
         for i in range(10):
             seq = "".join(random.choices("ACG-", k=self.seqlen)) # Note: No T letters
             dnaseq1 = sq.DNA_sequence("s1", seq)
-            dnaseq2 = dnaseq1.copy_seqobject()
+            dnaseq2 = sq.DNA_sequence("s2", seq)
             nmut = random.randint(1,self.seqlen)
             mutpos = random.sample(range(len(seq)), k=nmut)
-            ngaps = 0
+            nmutgaps = 0
             for j in mutpos:
                 if dnaseq1[j] == "-":
-                    ngaps += 1
+                    nmutgaps += 1
                 dnaseq2[j] = "T"
+            ngaps = dnaseq1.seq.count("-")
             pdist = dnaseq1.pdist_ignoregaps(dnaseq2)
-            assert pdist == (nmut - ngaps) / (self.seqlen - ngaps)
+            assert pdist == (nmut - nmutgaps) / (self.seqlen - ngaps)
+
+###################################################################################################
+
+class Test_pdist_ignorechars_DNA:
+
+    seqlen = 150
+
+    def test_10_random_pairs(self):
+        for i in range(10):
+            seq = "".join(random.choices("ACG-N", k=self.seqlen)) # Note: No T letters
+            dnaseq1 = sq.DNA_sequence("s1", seq)
+            dnaseq2 = sq.DNA_sequence("s2", seq)
+            nmut = random.randint(1,self.seqlen)
+            mutpos = random.sample(range(len(seq)), k=nmut)
+            nmutignore = 0
+            for j in mutpos:
+                if dnaseq1[j] in "-N":
+                    nmutignore += 1
+                dnaseq2[j] = "T"
+            nchars = dnaseq1.seq.count("-") + dnaseq1.seq.count("N")
+            pdist = dnaseq1.pdist_ignorechars(dnaseq2, "-N")
+            assert pdist == (nmut - nmutignore) / (self.seqlen - nchars)
 
 ###################################################################################################
 
@@ -5236,9 +5264,9 @@ class Test_Seq_alignment_pairwise_sequence_distances:
         self.alignment = sq.Seq_alignment("test_alignment")
 
         # Adding sequences to the alignment
-        seq1 = sq.DNA_sequence("seq1", "ACGCCTCGCTAC--CGCTCA---AACGCT")
-        seq2 = sq.DNA_sequence("seq2", "CACAGTACGTGCTAGA---CT-GACTGAT")
-        seq3 = sq.DNA_sequence("seq3", "AC----GCGA-----CTCGACTCAGCTAC")
+        seq1 = sq.DNA_sequence("seq1", "ACGCCTCGGT")
+        seq2 = sq.DNA_sequence("seq2", "CACA----GA")
+        seq3 = sq.DNA_sequence("seq3", "CC----GCCN")
         
         self.alignment.addseq(seq1)
         self.alignment.addseq(seq2)
@@ -5246,7 +5274,7 @@ class Test_Seq_alignment_pairwise_sequence_distances:
 
     def test_pairwise_sequence_distances(self):
         """Test pairwise sequence distances without ignoring gaps."""
-        df = self.alignment.pairwise_sequence_distances(ignoregaps=False)
+        df = self.alignment.pairwise_sequence_distances()
         
         # Check that a DataFrame is returned
         assert isinstance(df, pd.DataFrame)
@@ -5256,9 +5284,9 @@ class Test_Seq_alignment_pairwise_sequence_distances:
         
         # Expected distances: (seq1, seq2), (seq1, seq3), (seq2, seq3)
         expected_distances = {
-            ('seq1', 'seq2'): sq.DNA_sequence.pdist(self.alignment.getseq('seq1'), self.alignment.getseq('seq2')),
-            ('seq1', 'seq3'): sq.DNA_sequence.pdist(self.alignment.getseq('seq1'), self.alignment.getseq('seq3')),
-            ('seq2', 'seq3'): sq.DNA_sequence.pdist(self.alignment.getseq('seq2'), self.alignment.getseq('seq3')),
+            ('seq1', 'seq2'): 9/10,
+            ('seq1', 'seq3'): 9/10,
+            ('seq2', 'seq3'): 9/10,
         }
 
         for index, row in df.iterrows():
@@ -5278,9 +5306,53 @@ class Test_Seq_alignment_pairwise_sequence_distances:
         
         # Expected distances with gaps ignored
         expected_distances = {
-            ('seq1', 'seq2'): sq.DNA_sequence.pdist_ignoregaps(self.alignment.getseq('seq1'), self.alignment.getseq('seq2')),
-            ('seq1', 'seq3'): sq.DNA_sequence.pdist_ignoregaps(self.alignment.getseq('seq1'), self.alignment.getseq('seq3')),
-            ('seq2', 'seq3'): sq.DNA_sequence.pdist_ignoregaps(self.alignment.getseq('seq2'), self.alignment.getseq('seq3')),
+            ('seq1', 'seq2'): 5/6,
+            ('seq1', 'seq3'): 5/6,
+            ('seq2', 'seq3'): 3/4,
+        }
+
+        for index, row in df.iterrows():
+            pair = (row['seq1'], row['seq2'])
+            assert pair in expected_distances
+            assert row['distance'] == pytest.approx(expected_distances[pair])
+
+    def test_pairwise_sequence_distances_ignore_ambig(self):
+        """Test pairwise sequence distances with ambiguities ignored."""
+        df = self.alignment.pairwise_sequence_distances(ignoreambig=True)
+        
+        # Check that a DataFrame is returned
+        assert isinstance(df, pd.DataFrame)
+
+        # Check the correct number of pairs (3 sequences -> 3 pairs)
+        assert len(df) == 3
+        
+        # Expected distances with gaps ignored
+        expected_distances = {
+            ('seq1', 'seq2'): 9/10,
+            ('seq1', 'seq3'): 8/9,
+            ('seq2', 'seq3'): 8/9,
+        }
+
+        for index, row in df.iterrows():
+            pair = (row['seq1'], row['seq2'])
+            assert pair in expected_distances
+            assert row['distance'] == pytest.approx(expected_distances[pair])
+
+    def test_pairwise_sequence_distances_ignore_gaps_ambig(self):
+        """Test pairwise sequence distances with gaps and ambigs ignored."""
+        df = self.alignment.pairwise_sequence_distances(ignoregaps=True, ignoreambig=True)
+        
+        # Check that a DataFrame is returned
+        assert isinstance(df, pd.DataFrame)
+
+        # Check the correct number of pairs (3 sequences -> 3 pairs)
+        assert len(df) == 3
+        
+        # Expected distances with gaps ignored
+        expected_distances = {
+            ('seq1', 'seq2'): 5/6,
+            ('seq1', 'seq3'): 4/5,
+            ('seq2', 'seq3'): 2/3,
         }
 
         for index, row in df.iterrows():
