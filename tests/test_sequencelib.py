@@ -106,15 +106,15 @@ class Test_indices:
 
     def test_singlesubstring(self):
         inputstring = "AAAAAAAAAA AAAAAAAA AAAAAAA Here AAAAAAAA AAAAAA"
-        assert sq.indices(inputstring, "Here") == set([28])
+        assert sq._indices(inputstring, "Here") == set([28])
 
     def test_triplesubstring(self):
         inputstring = "AAAAAAAAAA Here AAAAAAAA AAAAAAA Here AAAAAAAA AAAHereAAA"
-        assert sq.indices(inputstring, "Here") == set([11,33,50])
+        assert sq._indices(inputstring, "Here") == set([11,33,50])
 
     def test_overlapping(self):
         inputstring = "AAAAAAAAAA hehehehe AAAAAAA hehe AAAAA"
-        assert sq.indices(inputstring, "hehe") == set([11,13,15,28])
+        assert sq._indices(inputstring, "hehe") == set([11,13,15,28])
 
 ###################################################################################################
 
