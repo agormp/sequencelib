@@ -69,7 +69,7 @@ def seqtype_attributes(seqtype):
 
 ##############################################################################################################
 
-def indices(mystring, substring):
+def _indices(mystring, substring):
     """Helper function that finds indices of substring in string. Returns as set"""
     result = set()
     offset = -1
