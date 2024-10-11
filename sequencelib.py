@@ -2375,12 +2375,7 @@ class Seq_alignment(Sequences_base):
             ignorechars |= set("-")
         if ignoreambig:
             ignorechars |= self.ambigsymbols
-            
-            
-            distmethod = Sequence.pdist_ignoregaps
-        else:
-            distmethod = Sequence.pdist
-
+ 
         # Online (single-pass) computation of mean and variance
         # Also keep track of max and min
         minpi = math.inf
@@ -2408,20 +2403,25 @@ class Seq_alignment(Sequences_base):
 
     #######################################################################################
 
-    def pairwise_sequence_distances(self, ignoregaps=False):
+    def pairwise_sequence_distances(self, ignoregaps=False, ignoreambig=False):
         """
         Compute all pairwise sequence distances.
-        Return a DataFrame with columns: 'Seq1', 'Seq2', 'Distance'
+        Return a DataFrame with columns: 'seq1', 'seq2', 'distance'
         """
+
+        ignorechars = set()
         if ignoregaps:
-            distmethod = Sequence.pdist_ignoregaps
-        else:
-            distmethod = Sequence.pdist
+            ignorechars |= set("-")
+        if ignoreambig:
+            ignorechars |= self.ambigsymbols
     
         pairwise_dists = []
     
         for s1, s2 in itertools.combinations(self, 2):
-            dist = distmethod(s1, s2)
+            if ignorechars:
+                dist = s1.pdist_ignorechars(s2, ignorechars)
+            else:
+                dist = s1.pdist(s2)
             pairwise_dists.append((s1.name, s2.name, dist))
     
         # Create a DataFrame with the pairwise distances
