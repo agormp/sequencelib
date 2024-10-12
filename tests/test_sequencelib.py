@@ -5187,14 +5187,18 @@ class Test_Seq_alignment_sequence_diversity:
     """Test suite for the sequence_diversity method in Seq_alignment."""
 
     def setup_method(self):
-        """Setup method to create a base Seq_alignment object for testing."""
-        self.seq1 = sq.DNA_sequence(name="seq1", seq="ATCG")
-        self.seq2 = sq.DNA_sequence(name="seq2", seq="ATGG")
-        self.seq3 = sq.DNA_sequence(name="seq3", seq="TTGG")
-        self.alignment = sq.Seq_alignment(name="alignment")
-        self.alignment.addseq(self.seq1)
-        self.alignment.addseq(self.seq2)
-        self.alignment.addseq(self.seq3)
+        """Setup method to initialize Seq_alignment instance for testing."""
+        # Create an alignment with three sequences
+        self.alignment = sq.Seq_alignment("test_alignment")
+
+        # Adding sequences to the alignment
+        seq1 = sq.DNA_sequence("seq1", "ACGCCTCGGT")
+        seq2 = sq.DNA_sequence("seq2", "CACA----GA")
+        seq3 = sq.DNA_sequence("seq3", "CC----GCCN")
+        
+        self.alignment.addseq(seq1)
+        self.alignment.addseq(seq2)
+        self.alignment.addseq(seq3)
 
     def test_sequence_diversity_default(self):
         """Test sequence diversity with default settings (considering gaps)."""
@@ -5202,9 +5206,9 @@ class Test_Seq_alignment_sequence_diversity:
 
         # Calculate expected mean and std using pairwise pdist
         expected_distances = [
-            sq.Sequence.pdist(self.seq1, self.seq2),  # 1 mismatch out of 4
-            sq.Sequence.pdist(self.seq1, self.seq3),  # 2 mismatches out of 4
-            sq.Sequence.pdist(self.seq2, self.seq3)   # 1 mismatch out of 4
+            9/10,
+            9/10,
+            7/10
         ]
         expected_mean = sum(expected_distances) / len(expected_distances)
         expected_variance = sum((d - expected_mean) ** 2 for d in expected_distances) / len(expected_distances)
@@ -5217,16 +5221,14 @@ class Test_Seq_alignment_sequence_diversity:
 
     def test_sequence_diversity_ignoregaps(self):
         """Test sequence diversity while ignoring gaps."""
-        seq4 = sq.DNA_sequence(name="seq4", seq="A-CG")
-        alignment_with_gaps = sq.Seq_alignment(name="alignment_with_gaps")
-        alignment_with_gaps.addseq(self.seq1)
-        alignment_with_gaps.addseq(seq4)
 
-        mean, std, minpi, maxpi = alignment_with_gaps.sequence_diversity(ignoregaps=True)
+        mean, std, minpi, maxpi = self.alignment.sequence_diversity(ignoregaps=True)
 
         # Calculate expected mean and std using pairwise pdist_ignoregaps
         expected_distances = [
-            sq.Sequence.pdist_ignoregaps(self.seq1, seq4)  # No mismatches when ignoring gaps
+            5/6,
+            5/6,
+            3/4
         ]
         expected_mean = sum(expected_distances) / len(expected_distances)
         expected_variance = sum((d - expected_mean) ** 2 for d in expected_distances) / len(expected_distances)
@@ -5237,13 +5239,54 @@ class Test_Seq_alignment_sequence_diversity:
         assert minpi == pytest.approx(min(expected_distances), rel=1e-5)
         assert maxpi == pytest.approx(max(expected_distances), rel=1e-5)
 
-    def test_sequence_diversity_single_sequence(self):
-      """Test that sequence diversity raises an error with only one sequence."""
-      single_seq_alignment = sq.Seq_alignment(name="single_seq_alignment")
-      single_seq_alignment.addseq(self.seq1)
+    def test_sequence_diversity_ignoreambig(self):
+        """Test sequence diversity while ignoring gaps."""
 
-      # Expect an error when trying to compute diversity with a single sequence
-      with pytest.raises(sq.SeqError, match="Can't compute diversity for alignment with less than 2 sequences"):
+        mean, std, minpi, maxpi = self.alignment.sequence_diversity(ignoreambig=True)
+
+        # Calculate expected mean and std using pairwise pdist_ignoregaps
+        expected_distances = [
+            9/10,
+            8/9,
+            6/9
+        ]
+        expected_mean = sum(expected_distances) / len(expected_distances)
+        expected_variance = sum((d - expected_mean) ** 2 for d in expected_distances) / len(expected_distances)
+        expected_std = math.sqrt(expected_variance)
+
+        assert mean == pytest.approx(expected_mean, rel=1e-5)
+        assert std == pytest.approx(expected_std, rel=1e-5)
+        assert minpi == pytest.approx(min(expected_distances), rel=1e-5)
+        assert maxpi == pytest.approx(max(expected_distances), rel=1e-5)
+
+    def test_sequence_diversity_ignoregapsambig(self):
+        """Test sequence diversity while ignoring gaps."""
+
+        mean, std, minpi, maxpi = self.alignment.sequence_diversity(ignoregaps=True, ignoreambig=True)
+
+        # Calculate expected mean and std using pairwise pdist_ignoregaps
+        expected_distances = [
+            5/6,
+            4/5,
+            2/3
+        ]
+        expected_mean = sum(expected_distances) / len(expected_distances)
+        expected_variance = sum((d - expected_mean) ** 2 for d in expected_distances) / len(expected_distances)
+        expected_std = math.sqrt(expected_variance)
+
+        assert mean == pytest.approx(expected_mean, rel=1e-5)
+        assert std == pytest.approx(expected_std, rel=1e-5)
+        assert minpi == pytest.approx(min(expected_distances), rel=1e-5)
+        assert maxpi == pytest.approx(max(expected_distances), rel=1e-5)
+        
+    def test_sequence_diversity_single_sequence(self):
+        """Test that sequence diversity raises an error with only one sequence."""
+        seq1 = sq.DNA_sequence("seq1", "ACGCCTCGGT")
+        single_seq_alignment = sq.Seq_alignment(name="single_seq_alignment")
+        single_seq_alignment.addseq(seq1)
+
+        # Expect an error when trying to compute diversity with a single sequence
+        with pytest.raises(sq.SeqError, match="Can't compute diversity for alignment with less than 2 sequences"):
           single_seq_alignment.sequence_diversity()
 
     def test_sequence_diversity_no_sequences(self):
@@ -5286,7 +5329,7 @@ class Test_Seq_alignment_pairwise_sequence_distances:
         expected_distances = {
             ('seq1', 'seq2'): 9/10,
             ('seq1', 'seq3'): 9/10,
-            ('seq2', 'seq3'): 9/10,
+            ('seq2', 'seq3'): 7/10,
         }
 
         for index, row in df.iterrows():
@@ -5330,7 +5373,7 @@ class Test_Seq_alignment_pairwise_sequence_distances:
         expected_distances = {
             ('seq1', 'seq2'): 9/10,
             ('seq1', 'seq3'): 8/9,
-            ('seq2', 'seq3'): 8/9,
+            ('seq2', 'seq3'): 6/9,
         }
 
         for index, row in df.iterrows():

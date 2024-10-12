@@ -574,13 +574,21 @@ class Sequence(object):
 
     #######################################################################################
 
-    def composition(self, ignoregaps=True):
+    def composition(self, ignoregaps=True, ignoreambig=False):
         """Returns dictionary with composition for single seq. {letter:(count,freq)}"""
 
         countdict = self.residuecounts()
+
+        ignorechars = set()
         if ignoregaps:
-            alphabet = set(countdict.keys()) - set("-")
-            length = len(self) - countdict["-"]
+            ignorechars |= set("-")
+        if ignoreambig:
+            ignorechars |= self.ambigsymbols
+
+        if ignorechars:
+            alphabet = set(countdict.keys()) - ignorechars
+            ignorecount = sum(countdict[key] for key in ignorechars)
+            length = len(self) - ignorecount
         else:
             alphabet = set(countdict.keys())
             length = len(self)
@@ -1493,13 +1501,21 @@ class Sequences_base(object):
 
     #######################################################################################
 
-    def composition(self, ignoregaps=True):
+    def composition(self, ignoregaps=True, ignoreambig=False):
         """Returns dictionary with cumulated counts AND freq for set of seqs {symbol:[count,freq]}"""
 
         allcounts = self.residuecounts()
+        
+        ignorechars = set()
         if ignoregaps:
-            alphabet = set(allcounts.keys()) - set("-")
-            totlength = sum(allcounts.values()) - allcounts["-"]
+            ignorechars |= set("-")
+        if ignoreambig:
+            ignorechars |= self.ambigsymbols
+
+        if ignorechars:
+            alphabet = set(allcounts.keys()) - ignorechars
+            ignorecount = sum(allcounts[key] for key in ignorechars)
+            totlength = sum(allcounts.values()) - ignorecount
         else:
             alphabet = set(allcounts.keys())
             totlength = sum(allcounts.values())
