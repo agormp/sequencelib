@@ -802,15 +802,6 @@ class Protein_sequence(Sequence):
         self.ambigsymbols = self.alphabet - Const.Protein
         Sequence.__init__(self, name, seq, annotation, comments, check_alphabet, degap)
 
-    #######################################################################################
-
-    def shuffle(self):
-        """Returns shuffled sequence as protein sequence object - original is unchanged"""
-
-        shufseq = Sequence.shuffle(self)
-        name = self.name + "_shuffled"
-        return Protein_sequence(name, shufseq)
-
 #############################################################################################
 #############################################################################################
 
@@ -824,15 +815,6 @@ class ASCII_sequence(Sequence):
         self.alphabet = Const.ASCII
         self.ambigsymbols = set()       # Empty set. Attribute used by some functions. Change?
         Sequence.__init__(self, name, seq, annotation, comments, check_alphabet, degap)
-
-    #######################################################################################
-
-    def shuffle(self):
-        """Returns shuffled sequence as ASCII sequence object - original is unchanged"""
-
-        shufseq = Sequence.shuffle(self)
-        name = self.name + "_shuffled"
-        return ASCII_sequence(name, shufseq)
 
 #############################################################################################
 #############################################################################################
