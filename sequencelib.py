@@ -2696,7 +2696,7 @@ class Seq_alignment(Sequences_base):
         nexus.append("#NEXUS\n\n")
         nexus.append("begin data;\n")
         nexus.append("    dimensions ntax=%d nchar=%d;\n" % (numseq, alignlen))
-        nexus.append("    format datatype=%s interleave=yes gap=-;\n\n" % (seqtype))
+        nexus.append("    format datatype=%s interleave gap=-;\n\n" % (seqtype))
         nexus.append("    matrix\n")
 
         # Sequence blocks. Divides nexus file into one subsection per partition if requested
@@ -2740,7 +2740,7 @@ class Seq_alignment(Sequences_base):
         nexus = ["#NEXUS\n\n"]
         nexus.append("begin data;\n")
         nexus.append("dimensions ntax=%d nchar=%d;\n" % (numseq, 2 * alignlen))
-        nexus.append('format datatype=mixed(restriction:1-%d,%s:%d-%d) interleave=yes gap=-;\n\n' %
+        nexus.append('format datatype=mixed(restriction:1-%d,%s:%d-%d) interleave gap=-;\n\n' %
                                                  (alignlen, seqtype, alignlen + 1, 2 * alignlen))
         nexus.append("matrix\n")
 
