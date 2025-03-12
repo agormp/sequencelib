@@ -7,3 +7,4 @@ venv*
 .hypothesis
 tmp/
 sequencelib.egg-info
+.coverage
