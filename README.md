@@ -200,7 +200,7 @@ Sequence(name, seq, annotation='', comments='', check_alphabet=False, degap=Fals
 ---
 
 ### Class: `DNA_sequence(Sequence)`
-Specialized sequence class for DNA sequences.
+Specialized sequence class for DNA sequences. Has access to all the methods in its base class (Sequence) in addition to the ones listed here.
 
 #### Methods
 - `revcomp()`: Returns reverse complement.
@@ -209,7 +209,7 @@ Specialized sequence class for DNA sequences.
 ---
 
 ### Class: `Protein_sequence(Sequence)`
-Specialized sequence class for protein sequences. Inherits directly from `Sequence`.
+Specialized sequence class for protein sequences. Has access to all the methods in its base class (Sequence).
 
 ---
 
@@ -254,7 +254,7 @@ Abstract base class for sequence collections. Should not be instantiated directl
 ---
 
 ### Class: `Seq_alignment(Sequences_base)`
-Represents aligned sequences. This class also has access to all methods defined in parent class (Sequences_base).
+Represents aligned sequences. This class also has access to all methods defined in base class (Sequences_base).
 
 #### Methods
 
