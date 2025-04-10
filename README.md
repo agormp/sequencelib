@@ -5,7 +5,7 @@
 
 Using the classes and methods in sequencelib.py, you can read and write text files containing DNA or protein sequences (aligned or unaligned), and analyze or manipulate these sequences in various ways
 
-**Note: ** Much of the functionality in `sequencelib` is also available through the command-line tool [seqconverter](https://github.com/agormp/seqconverter)
+**Note:** Much of the functionality in `sequencelib` is also available through the command-line tool [seqconverter](https://github.com/agormp/seqconverter)
 
 ## Availability
 
