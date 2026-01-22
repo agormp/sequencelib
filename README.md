@@ -1,6 +1,6 @@
 # sequencelib
 
-![](https://img.shields.io/badge/version-2.23.2-blue)
+[![PyPI version](https://img.shields.io/pypi/v/sequencelib)](#installation)
 [![PyPI downloads](https://static.pepy.tech/personalized-badge/sequencelib?period=total&units=none&left_color=black&right_color=blue&left_text=PyPI%20downloads&service=github)](https://pepy.tech/project/sequencelib)
 
 Using the classes and methods in sequencelib.py, you can read and write text files containing DNA or protein sequences (aligned or unaligned), and analyze or manipulate these sequences in various ways
