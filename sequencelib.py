@@ -4,27 +4,24 @@
 
 """Classes and methods for reading, analyzing, manipulating, and writing DNA and protein sequences"""
 
-from math import ceil
-from math import floor
-from math import sqrt
-from math import log
-from math import log10
+# Standard library
+import copy
+import itertools
 import math
-
-from collections import Counter
-from contextlib import nullcontext
+import os
+import random
 import re
 import string
 import sys
 import time
-import random
-import itertools
+from collections import Counter
+from contextlib import nullcontext
 from io import StringIO
-import copy
-import os
+
+# Third-party
+import Levenshtein as lv
 import numpy as np
 import pandas as pd
-import Levenshtein as lv
 
 ##############################################################################################################
 # Various functions used by methods, that do not fit neatly in any class
@@ -636,7 +633,7 @@ class Sequence(object):
             fasta.append(self.seq)
         # else: fold lines at width characters
         else:
-            numlines = int(ceil(len(self)/float(width)))
+            numlines = int(math.ceil(len(self)/float(width)))
             for i in range(numlines):
                 fasta.append(self[i*width:i*width+width])
                 fasta.append("\n")
@@ -667,7 +664,7 @@ class Sequence(object):
             how.append(self.annotation)
         # Print seq and annotation, fold lines at "width" characters
         else:
-            numlines = int(ceil(len(self)/float(width)))
+            numlines = int(math.ceil(len(self)/float(width)))
             for i in range(numlines):
                 how.append(self[i*width:i*width+width])
                 how.append("\n")
@@ -1094,7 +1091,7 @@ class Read_assembler(object):
             l = 0
             for contig in self.contigdict.values():
                 l += len( contig.assembly )
-            minoverlap = ceil( log( l ) / log( 4 ) )    # Previous self should remind current self why this is clever...
+            minoverlap = math.ceil( math.log( l ) / math.log( 4 ) )    # Previous self should remind current self why this is clever...
         while len ( self.contigdict ) > 0:
 
             c1name, c1 = self.contigdict.popitem()
@@ -1532,7 +1529,7 @@ class Sequences_base(object):
             return
         if namefile:
             transfile = open(namefile, "w")
-        nfill = int(log(len(self)) / log(10)) + 1     # Number of digits required
+        nfill = int(math.log(len(self)) / math.log(10)) + 1     # Number of digits required
         for i, oldname in enumerate(self.getnames()):
             newname = basename + "_" + str(i + 1).rjust(nfill, "0")       # Pad running index with zeroes
             if namefile:
@@ -2232,7 +2229,7 @@ class Seq_alignment(Sequences_base):
             entropy = 0.0
             for symbol in symbolcounts:
                 symbolfreq = symbolcounts[symbol] / numseqs
-                entropy += symbolfreq * log(symbolfreq, 2)
+                entropy += symbolfreq * math.log(symbolfreq, 2)
             shannonlist.append(- entropy)
 
         return shannonlist
@@ -2398,7 +2395,7 @@ class Seq_alignment(Sequences_base):
 
         # NOTE: need to doublecheck this:
         variance = var_cur / (num_vals)
-        std = sqrt(variance)
+        std = math.sqrt(variance)
         return (mean_cur, std, minpi, maxpi)
 
     #######################################################################################
@@ -2516,7 +2513,7 @@ class Seq_alignment(Sequences_base):
         if width == -1:
             width = alignlen
         numseq = len(self)
-        numseqblocks = int(ceil(self.alignlen()/float(width)))
+        numseqblocks = int(math.ceil(self.alignlen()/float(width)))
 
         # Find longest name (NOTE: could also check this during construction of alignment)
         lenlist = [len(seq.name) for seq in self]
@@ -2554,7 +2551,7 @@ class Seq_alignment(Sequences_base):
         alignlen = self.alignlen()
         if width == -1:
             width = alignlen
-        numseqblocks = int(ceil(alignlen/float(width)))
+        numseqblocks = int(math.ceil(alignlen/float(width)))
 
         # If format is not protein (presumably "DNA") then conservation line is limited to scoring conserved
         # versus non-conserved. If format is "protein" then conservation line should score
@@ -2650,7 +2647,7 @@ class Seq_alignment(Sequences_base):
             raise SeqError("No sequences in sequence set.  Can't create nexus")
 
         def add_partition(partitionstart, partitionlen):
-            numseqblocks = int(ceil(partitionlen/float(width)))
+            numseqblocks = int(math.ceil(partitionlen/float(width)))
             for i in range(numseqblocks):
                 for seq in self:
                     blockstart = partitionstart + (i * width)
@@ -2727,7 +2724,7 @@ class Seq_alignment(Sequences_base):
         if width == -1:
             width = alignlen
         numseq = len(self)
-        numseqblocks = int(ceil(alignlen/float(width)))
+        numseqblocks = int(math.ceil(alignlen/float(width)))
         seqtype = self.seqtype.lower()
         alphabet = "".join(sorted(list(self.alphabet)))
 
@@ -2782,7 +2779,7 @@ class Seq_alignment(Sequences_base):
             name = self.partitions[i][0]
             namewidth = max(namewidth, len(name))
         largestnum = self.partitions[numpartitions-1][1] + self.partitions[numpartitions-1][2] - 1
-        numwidth = floor( log10( largestnum ) + 1 )
+        numwidth = math.floor( math.log10( largestnum ) + 1 )
 
         # Header
         block = ["begin mrbayes;\n"]
