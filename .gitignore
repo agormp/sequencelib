@@ -6,3 +6,5 @@ venv*
 .venv*
 .hypothesis
 tmp/
+.coverage
+*.egg-info/
