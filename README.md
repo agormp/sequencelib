@@ -7,8 +7,6 @@ Using the classes and methods in sequencelib.py, you can read and write text fil
 
 **Note:** Much of the functionality in `sequencelib` is also available through the command-line tool [seqconverter](https://github.com/agormp/seqconverter)
 
-Much of the functionality of sequencelib is exposed via the command-line program [seqconverter](https://github.com/agormp/seqconverter).
-
 ## Availability
 
 The sequencelib.py module is available on GitHub: https://github.com/agormp/sequencelib and on PyPI: https://pypi.org/project/sequencelib/
